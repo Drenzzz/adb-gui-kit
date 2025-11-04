@@ -59,3 +59,13 @@ func (a *App) GetDeviceInfo() (DeviceInfo, error) {
 
 	return info, nil
 }
+
+func (a *App) Reboot(mode string) error {
+	_, err := a.runCommand("adb", "reboot", mode)
+	
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
