@@ -1,7 +1,7 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "my-astro-app",
-  "outputfilename": "my-astro-app",
+  "name": "ADB-Kit",
+  "outputfilename": "ADB-Kit",
   "frontend:install": "pnpm install",
   "frontend:build": "pnpm build",
   "frontend:dev:watcher": "pnpm dev",
@@ -10,5 +10,12 @@
   "author": {
     "name": "Drenzzz",
     "email": "realdrenzzz@gmail.com"
+  },
+  "info": {
+    "companyName": "Drenzzz",
+    "productName": "ADB GUI Kit",
+    "productVersion": "1.0",
+    "copyright": "Copyright (c) 2025 Drenzzz",
+    "comments": ""
   }
 }
