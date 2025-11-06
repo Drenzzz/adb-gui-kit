@@ -233,8 +233,8 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
         </CardContent>
       </Card>
 
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardContent className="p-0 flex-1 flex">
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-0">
+        <CardContent className="p-0 flex-1 flex overflow-hidden min-h-0">
           <ScrollArea className="flex-1 h-full">
             <Table>
               <TableHeader className="sticky top-0 bg-muted/50 backdrop-blur-sm">
