@@ -6,7 +6,8 @@ import {
 } from '../../../wailsjs/go/backend/App';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Terminal, ChevronRight, Loader2 } from "lucide-react";
+import { Terminal, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,10 @@ export function ViewShell({ activeView }: { activeView: string }) {
   const [isLoading, setIsLoading] = useState(false);
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  const handleClearLog = () => {
+    setOutputHistory([]);
+  };
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter' || isLoading || command.trim() === "") {
@@ -105,14 +110,26 @@ export function ViewShell({ activeView }: { activeView: string }) {
   return (
     <div className="flex flex-col h-[calc(100vh-4.5rem)] gap-4"> 
       <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Terminal />
-            Universal Terminal
-          </CardTitle>
-          <CardDescription>
-            Run 'adb', 'adb shell', or 'fastboot' commands directly.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="flex items-center gap-2">
+              <Terminal />
+              Universal Terminal
+            </CardTitle>
+            <CardDescription>
+              Run 'adb', 'adb shell', or 'fastboot' commands directly.
+            </CardDescription>
+          </div>
+          
+          <Button
+            variant="destructive"
+            size="sm"
+            className="ml-4"
+            onClick={handleClearLog}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Clear Log
+          </Button>
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col p-4 pt-0 gap-4 overflow-hidden">
