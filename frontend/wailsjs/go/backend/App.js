@@ -58,6 +58,14 @@ export function Reboot(arg1) {
   return window['go']['backend']['App']['Reboot'](arg1);
 }
 
+export function RunAdbHostCommand(arg1) {
+  return window['go']['backend']['App']['RunAdbHostCommand'](arg1);
+}
+
+export function RunFastbootHostCommand(arg1) {
+  return window['go']['backend']['App']['RunFastbootHostCommand'](arg1);
+}
+
 export function RunShellCommand(arg1) {
   return window['go']['backend']['App']['RunShellCommand'](arg1);
 }

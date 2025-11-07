@@ -428,3 +428,17 @@ func (a *App) RunShellCommand(command string) (string, error) {
 	return output, nil
 }
 
+func (a *App) RunAdbHostCommand(args string) (string, error) {
+	if args == "" {
+		return "", fmt.Errorf("command cannot be empty")
+	}
+
+	argSlice := strings.Fields(args)
+
+	output, err := a.runCommand("adb", argSlice...)
+	if err != nil {
+		return "", fmt.Errorf("command failed: %w. Output: %s", err, output)
+	}
+
+	return output, nil
+}

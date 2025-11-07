@@ -1,10 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { RunShellCommand } from '../../../wailsjs/go/backend/App';
+import { 
+  RunShellCommand, 
+  RunAdbHostCommand, 
+  RunFastbootHostCommand 
+} from '../../../wailsjs/go/backend/App';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Terminal, ChevronRight, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 type HistoryEntry = {
@@ -37,11 +41,41 @@ export function ViewShell({ activeView }: { activeView: string }) {
     setOutputHistory(newHistory);
     
     try {
-      const result = await RunShellCommand(trimmedCommand);
+      let result = "";
+      
+      if (trimmedCommand.startsWith("adb shell ")) {
+        const shellCmd = trimmedCommand.substring(10).trim();
+        if (shellCmd) {
+          result = await RunShellCommand(shellCmd);
+        } else {
+          throw new Error("Usage: adb shell <command...>");
+        }
+
+      } else if (trimmedCommand.startsWith("adb ")) {
+        const hostCmd = trimmedCommand.substring(4).trim();
+        if (hostCmd) {
+          result = await RunAdbHostCommand(hostCmd);
+        } else {
+          throw new Error("Usage: adb <command...>");
+        }
+
+      } else if (trimmedCommand.startsWith("fastboot ")) {
+        const fastbootCmd = trimmedCommand.substring(9).trim();
+        if (fastbootCmd) {
+          result = await RunFastbootHostCommand(fastbootCmd);
+        } else {
+          throw new Error("Usage: fastboot <command...>");
+        }
+      
+      } else {
+        throw new Error(`Unknown command: "${trimmedCommand}".`);
+      }
+
       setOutputHistory([
         ...newHistory,
         { type: 'result', text: result.trim() || "(No output)" },
       ]);
+
     } catch (err) {
       const error = err as Error;
       setOutputHistory([
@@ -55,7 +89,7 @@ export function ViewShell({ activeView }: { activeView: string }) {
   
   useEffect(() => {
     if (scrollAreaRef.current) {
-      const viewport = scrollAreaRef.current.children[1] as HTMLDivElement;
+      const viewport = scrollAreaRef.current.children[0] as HTMLDivElement;
       if (viewport) {
         viewport.scrollTop = viewport.scrollHeight;
       }
@@ -74,10 +108,10 @@ export function ViewShell({ activeView }: { activeView: string }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Terminal />
-            Shell Terminal
+            Universal Terminal
           </CardTitle>
           <CardDescription>
-            Run custom `adb shell` commands directly. This is not an interactive TTY (e.g., 'nano' will not work).
+            Run 'adb', 'adb shell', or 'fastboot' commands directly.
           </CardDescription>
         </CardHeader>
 
@@ -88,7 +122,7 @@ export function ViewShell({ activeView }: { activeView: string }) {
               <pre className="text-sm font-mono whitespace-pre-wrap break-words">
                 {outputHistory.length === 0 ? (
                   <span className="text-muted-foreground">
-                    Welcome to ADB Shell. Type a command and press Enter.
+                    Welcome. Type your command below.\nExamples:\n  adb devices\n  adb shell ls /sdcard/\n  fastboot devices
                   </span>
                 ) : (
                   outputHistory.map((entry, index) => (
@@ -115,14 +149,13 @@ export function ViewShell({ activeView }: { activeView: string }) {
                 )}
               </pre>
             </div>
-            <ScrollBar orientation="vertical" />
           </ScrollArea>
 
           <div className="flex items-center gap-2">
             <ChevronRight className="h-4 w-4 text-primary" />
             <Input 
               id="shell-input"
-              placeholder="Type your command here (e.g., ls /sdcard/)"
+              placeholder="Type command... (e.g., adb devices, adb shell ls, fastboot devices)"
               className="font-mono"
               value={command}
               onChange={(e) => setCommand(e.target.value)}

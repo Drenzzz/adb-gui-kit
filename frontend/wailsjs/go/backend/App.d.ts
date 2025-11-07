@@ -30,6 +30,10 @@ export function PushFile(arg1:string,arg2:string):Promise<string>;
 
 export function Reboot(arg1:string):Promise<void>;
 
+export function RunAdbHostCommand(arg1:string):Promise<string>;
+
+export function RunFastbootHostCommand(arg1:string):Promise<string>;
+
 export function RunShellCommand(arg1:string):Promise<string>;
 
 export function SelectApkFile():Promise<string>;

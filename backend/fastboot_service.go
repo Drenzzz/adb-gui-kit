@@ -39,13 +39,27 @@ func (a *App) GetFastbootDevices() ([]Device, error) {
 	for _, line := range lines {
 		parts := strings.Fields(line)
 		if len(parts) >= 2 && parts[1] == "fastboot" {
-			// Outputnya adalah "SERIAL_NUMBER    fastboot"
 			devices = append(devices, Device{
 				Serial: parts[0],
-				Status: parts[1], // Statusnya akan "fastboot"
+				Status: parts[1],
 			})
 		}
 	}
 
 	return devices, nil
+}
+
+func (a *App) RunFastbootHostCommand(args string) (string, error) {
+	if args == "" {
+		return "", fmt.Errorf("command cannot be empty")
+	}
+
+	argSlice := strings.Fields(args)
+
+	output, err := a.runCommand("fastboot", argSlice...)
+	if err != nil {
+		return "", fmt.Errorf("command failed: %w. Output: %s", err, output)
+	}
+
+	return output, nil
 }
