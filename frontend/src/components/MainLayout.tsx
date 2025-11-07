@@ -11,6 +11,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -50,15 +51,21 @@ const pageVariants = {
   exit: { opacity: 0, y: -10 },
 };
 
-const navButtonClass =
-  "w-full text-base transition-colors duration-200 hover:bg-muted/70 dark:hover:bg-muted/30";
-
 const LOADING_DURATION = 750;
 
 export type HistoryEntry = {
   type: 'command' | 'result' | 'error';
   text: string;
 };
+
+const NAV_ITEMS = [
+  { id: VIEWS.DASHBOARD, icon: LayoutDashboard, label: "Dashboard" },
+  { id: VIEWS.APPS, icon: Box, label: "Application" },
+  { id: VIEWS.FILES, icon: FolderOpen, label: "File" },
+  { id: VIEWS.FLASHER, icon: Terminal, label: "Flasher" },
+  { id: VIEWS.UTILS, icon: Settings, label: "Utility" },
+  { id: VIEWS.SHELL, icon: Terminal, label: "Shell" },
+];
 
 export function MainLayout() {
   const [activeView, setActiveView] = useState<ViewType>(VIEWS.DASHBOARD);
@@ -67,11 +74,7 @@ export function MainLayout() {
   const [progress, setProgress] = useState(0);
   const [shellHistory, setShellHistory] = useState<HistoryEntry[]>([]);
   const [shellCommandHistory, setShellCommandHistory] = useState<string[]>([]);
-
-  const navIconClass = cn(
-    "h-4 w-4 transition-all duration-200",
-    !isCollapsed && "mr-2"
-  );
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const renderActiveView = () => {
     switch (activeView) {
@@ -85,7 +88,6 @@ export function MainLayout() {
         return <ViewFlasher activeView={activeView} />;
       case VIEWS.UTILS:
         return <ViewUtilities activeView={activeView} />;
-      
       case VIEWS.SHELL:
         return (
           <ViewShell 
@@ -150,192 +152,183 @@ export function MainLayout() {
             isLoading ? "opacity-0" : "opacity-100 transition-opacity duration-500 ease-in-out"
           )}
         >
-          <aside
-            className={cn(
-              "flex flex-col border-r bg-muted/40 transition-all duration-300 ease-in-out",
-              isCollapsed ? "w-[72px]" : "w-64"
-            )}
+          <motion.aside
+            initial={false}
+            animate={{ width: isCollapsed ? 80 : 280 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="relative flex flex-col bg-gradient-to-b from-muted/50 via-muted/30 to-background border-r border-border/50 backdrop-blur-xl"
           >
+            <div className="relative h-20 flex items-center justify-between px-4 border-b border-border/50">
+              <motion.div 
+                className="flex items-center gap-3"
+                animate={{ justifyContent: isCollapsed ? "center" : "flex-start" }}
+              >
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
+                  <img
+                    src="/logo.png"
+                    alt="ADB Kit logo"
+                    className={cn(
+                      "relative h-10 w-10 object-contain transition-all duration-300",
+                      isCollapsed && "h-11 w-11"
+                    )}
+                  />
+                </div>
+                <AnimatePresence>
+                  {!isCollapsed && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                        ADB Kit
+                      </h1>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            </div>
+
+            <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+              {NAV_ITEMS.map((item, index) => {
+                const Icon = item.icon;
+                const isActive = activeView === item.id;
+                
+                return (
+                  <Tooltip key={item.id}>
+                    <TooltipTrigger asChild>
+                      <motion.button
+                        whileHover={{ scale: 1.02, x: 2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveView(item.id)}
+                        onMouseEnter={() => setHoveredItem(item.id)}
+                        onMouseLeave={() => setHoveredItem(null)}
+                        className={cn(
+                          "relative w-full rounded-xl transition-all duration-300 overflow-hidden group",
+                          isCollapsed ? "h-12 p-0" : "h-12 px-4",
+                          isActive 
+                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25" 
+                            : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="activeIndicator"
+                            className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80"
+                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                          />
+                        )}
+                        
+                        {hoveredItem === item.id && !isActive && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5"
+                          />
+                        )}
+
+                        <div className={cn(
+                          "relative z-10 flex items-center h-full",
+                          isCollapsed ? "justify-center" : "gap-3"
+                        )}>
+                          <Icon className={cn(
+                            "transition-all duration-300",
+                            isActive ? "h-5 w-5" : "h-[18px] w-[18px]"
+                          )} />
+                          
+                          <AnimatePresence>
+                            {!isCollapsed && (
+                              <motion.span
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="font-medium text-[15px]"
+                              >
+                                {item.label}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {isActive && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary-foreground/30 rounded-r-full" />
+                        )}
+                      </motion.button>
+                    </TooltipTrigger>
+                    {isCollapsed && (
+                      <TooltipContent side="right" className="font-medium">
+                        {item.label}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                );
+              })}
+            </nav>
+
             <div
               className={cn(
-                "flex-1 flex flex-col",
-                isCollapsed ? "p-2" : "p-4"
+                "border-t border-border/50 p-3",
+                isCollapsed && "flex justify-center"
               )}
             >
-              <div
+              <ThemeToggle
+                isCollapsed={isCollapsed}
                 className={cn(
-                  "mb-6 flex h-10 items-center px-2",
-                  isCollapsed && "justify-center px-1"
+                  "w-full rounded-xl text-sm font-medium",
+                  "hover:bg-muted/40 transition-colors",
+                  isCollapsed && "w-12 h-12 p-0"
                 )}
-              >
-                <img
-                  src="/logo.png"
-                  alt="ADB Kit logo"
+              />
+            </div>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setIsCollapsed(!isCollapsed)}
                   className={cn(
-                    "h-8 w-8 object-contain transition-all duration-300 ease-in-out",
-                    isCollapsed && "h-9 w-9"
-                  )}
-                />
-                <h2
-                  className={cn(
-                    "ml-2 text-xl font-bold transition-opacity duration-200",
-                    isCollapsed ? "w-0 opacity-0" : "opacity-100"
+                    "absolute -right-4 top-1/2 -translate-y-1/2 z-20",
+                    "h-8 w-8 rounded-2xl",
+                    "bg-background border border-border shadow-md",
+                    "flex items-center justify-center",
+                    "hover:bg-muted transition-all duration-200",
+                    "hover:shadow-lg hover:border-primary/30"
                   )}
                 >
-                  ADB Kit
-                </h2>
-              </div>
+                  <motion.div
+                    animate={{ rotate: isCollapsed ? 180 : 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </motion.div>
+                </motion.button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {isCollapsed ? "Expand" : "Collapse"}
+              </TooltipContent>
+            </Tooltip>
+          </motion.aside>
 
-              <nav className="flex flex-col space-y-1">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={activeView === VIEWS.DASHBOARD ? "default" : "ghost"}
-                      className={cn(
-                        navButtonClass,
-                        isCollapsed ? "justify-center px-0" : "justify-start px-3"
-                      )}
-                      onClick={() => setActiveView(VIEWS.DASHBOARD)}
-                    >
-                      <LayoutDashboard className={navIconClass} />
-                      <span className={cn(isCollapsed && "hidden")}>Dashboard</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Dashboard</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={activeView === VIEWS.APPS ? "default" : "ghost"}
-                      className={cn(
-                        navButtonClass,
-                        isCollapsed ? "justify-center px-0" : "justify-start px-3"
-                      )}
-                      onClick={() => setActiveView(VIEWS.APPS)}
-                    >
-                      <Box className={navIconClass} />
-                      <span className={cn(isCollapsed && "hidden")}>Application</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Application</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={activeView === VIEWS.FILES ? "default" : "ghost"}
-                      className={cn(
-                        navButtonClass,
-                        isCollapsed ? "justify-center px-0" : "justify-start px-3"
-                      )}
-                      onClick={() => setActiveView(VIEWS.FILES)}
-                    >
-                      <FolderOpen className={navIconClass} />
-                      <span className={cn(isCollapsed && "hidden")}>File</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">File</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={activeView === VIEWS.FLASHER ? "default" : "ghost"}
-                      className={cn(
-                        navButtonClass,
-                        isCollapsed ? "justify-center px-0" : "justify-start px-3"
-                      )}
-                      onClick={() => setActiveView(VIEWS.FLASHER)}
-                    >
-                      <Terminal className={navIconClass} />
-                      <span className={cn(isCollapsed && "hidden")}>Flasher</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Flasher</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={activeView === VIEWS.UTILS ? "default" : "ghost"}
-                      className={cn(
-                        navButtonClass,
-                        isCollapsed ? "justify-center px-0" : "justify-start px-3"
-                      )}
-                      onClick={() => setActiveView(VIEWS.UTILS)}
-                    >
-                      <Settings className={navIconClass} />
-                      <span className={cn(isCollapsed && "hidden")}>Utility</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Utility</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant={activeView === VIEWS.SHELL ? "default" : "ghost"}
-                      className={cn("justify-start text-base", isCollapsed && "justify-center")}
-                      onClick={() => setActiveView(VIEWS.SHELL)}
-                    >
-                      <Terminal className="mr-2 h-4 w-4" />
-                      <span className={cn(isCollapsed && "hidden")}>Shell</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Shell</TooltipContent>
-                </Tooltip>
-
-              </nav>
+          <main className="flex-1 overflow-auto">
+            <div className="min-h-full p-6">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeView}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={pageVariants}
+                  transition={{ duration: 0.2 }}
+                >
+                  {renderActiveView()}
+                </motion.div>
+              </AnimatePresence>
             </div>
-
-            <div
-              className={cn(
-                "mt-auto border-t border-border/40",
-                isCollapsed ? "p-2" : "p-4"
-              )}
-            >
-              <ThemeToggle isCollapsed={isCollapsed} />
-            </div>
-          </aside>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className={cn(
-                  "absolute z-10 h-7 w-7 rounded-full p-0 transition-all duration-300 ease-in-out",
-                  "top-16 -translate-y-1/2",
-                  isCollapsed ? "left-[calc(72px-14px)]" : "left-[calc(256px-14px)]"
-                )}
-                onClick={() => setIsCollapsed(!isCollapsed)}
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="h-4 w-4" />
-                ) : (
-                  <ChevronLeft className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              {isCollapsed ? "Expand" : "Collapse"}
-            </TooltipContent>
-          </Tooltip>
-
-          <main className="flex-1 overflow-auto p-6">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeView}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                variants={pageVariants}
-                transition={{ duration: 0.2 }}
-              >
-                {renderActiveView()}
-              </motion.div>
-            </AnimatePresence>
           </main>
         </div>
         <Toaster position="top-right" richColors closeButton />
