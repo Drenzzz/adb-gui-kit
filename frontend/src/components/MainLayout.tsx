@@ -55,11 +55,17 @@ const navButtonClass =
 
 const LOADING_DURATION = 750;
 
+export type HistoryEntry = {
+  type: 'command' | 'result' | 'error';
+  text: string;
+};
+
 export function MainLayout() {
   const [activeView, setActiveView] = useState<ViewType>(VIEWS.DASHBOARD);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [shellHistory, setShellHistory] = useState<HistoryEntry[]>([]);
 
   const navIconClass = cn(
     "h-4 w-4 transition-all duration-200",
@@ -78,12 +84,19 @@ export function MainLayout() {
         return <ViewFlasher activeView={activeView} />;
       case VIEWS.UTILS:
         return <ViewUtilities activeView={activeView} />;
+      
       case VIEWS.SHELL:
-        return <ViewShell activeView={activeView} />; 
+        return (
+          <ViewShell 
+            activeView={activeView} 
+            history={shellHistory}
+            setHistory={setShellHistory}
+          />
+        );
       default:
         return <ViewDashboard activeView={activeView} />;
     }
-  };
+  };  
 
   useEffect(() => {
     let animationFrame: number;
@@ -269,7 +282,7 @@ export function MainLayout() {
                   </TooltipTrigger>
                   <TooltipContent side="right">Shell</TooltipContent>
                 </Tooltip>
-                
+
               </nav>
             </div>
 

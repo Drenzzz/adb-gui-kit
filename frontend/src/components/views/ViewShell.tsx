@@ -11,22 +11,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import type { HistoryEntry } from '../MainLayout';
 
-type HistoryEntry = {
-  type: 'command' | 'result' | 'error';
-  text: string;
-};
+interface ViewShellProps {
+  activeView: string;
+  history: HistoryEntry[];
+  setHistory: React.Dispatch<React.SetStateAction<HistoryEntry[]>>;
+}
 
-export function ViewShell({ activeView }: { activeView: string }) {
+export function ViewShell({ activeView, history, setHistory }: ViewShellProps) {
   const [command, setCommand] = useState("");
-  const [outputHistory, setOutputHistory] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-
-  const handleClearLog = () => {
-    setOutputHistory([]);
-  };
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter' || isLoading || command.trim() === "") {
@@ -40,50 +37,38 @@ export function ViewShell({ activeView }: { activeView: string }) {
     setCommand("");
     
     const newHistory: HistoryEntry[] = [
-      ...outputHistory,
+      ...history,
       { type: 'command', text: trimmedCommand },
     ];
-    setOutputHistory(newHistory);
+    setHistory(newHistory); 
     
     try {
       let result = "";
       
       if (trimmedCommand.startsWith("adb shell ")) {
         const shellCmd = trimmedCommand.substring(10).trim();
-        if (shellCmd) {
-          result = await RunShellCommand(shellCmd);
-        } else {
-          throw new Error("Usage: adb shell <command...>");
-        }
-
+        if (shellCmd) result = await RunShellCommand(shellCmd);
+        else throw new Error("Usage: adb shell <command...>");
       } else if (trimmedCommand.startsWith("adb ")) {
         const hostCmd = trimmedCommand.substring(4).trim();
-        if (hostCmd) {
-          result = await RunAdbHostCommand(hostCmd);
-        } else {
-          throw new Error("Usage: adb <command...>");
-        }
-
+        if (hostCmd) result = await RunAdbHostCommand(hostCmd);
+        else throw new Error("Usage: adb <command...>");
       } else if (trimmedCommand.startsWith("fastboot ")) {
         const fastbootCmd = trimmedCommand.substring(9).trim();
-        if (fastbootCmd) {
-          result = await RunFastbootHostCommand(fastbootCmd);
-        } else {
-          throw new Error("Usage: fastboot <command...>");
-        }
-      
+        if (fastbootCmd) result = await RunFastbootHostCommand(fastbootCmd);
+        else throw new Error("Usage: fastboot <command...>");
       } else {
         throw new Error(`Unknown command: "${trimmedCommand}".`);
       }
-
-      setOutputHistory([
+      
+      setHistory([
         ...newHistory,
         { type: 'result', text: result.trim() || "(No output)" },
       ]);
 
     } catch (err) {
       const error = err as Error;
-      setOutputHistory([
+      setHistory([
         ...newHistory,
         { type: 'error', text: error.message },
       ]);
@@ -91,7 +76,11 @@ export function ViewShell({ activeView }: { activeView: string }) {
       setIsLoading(false);
     }
   };
-  
+
+  const handleClearLog = () => {
+    setHistory([]);
+  };
+
   useEffect(() => {
     if (scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.children[0] as HTMLDivElement;
@@ -99,7 +88,7 @@ export function ViewShell({ activeView }: { activeView: string }) {
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [outputHistory]);
+  }, [History]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -137,12 +126,12 @@ export function ViewShell({ activeView }: { activeView: string }) {
           <ScrollArea className="flex-1 bg-muted/50 rounded-md border" ref={scrollAreaRef}>
             <div className="p-4">
               <pre className="text-sm font-mono whitespace-pre-wrap break-words">
-                {outputHistory.length === 0 ? (
+                {history.length === 0 ? (
                   <span className="text-muted-foreground">
                     Welcome. Type your command below.\nExamples:\n  adb devices\n  adb shell ls /sdcard/\n  fastboot devices
                   </span>
                 ) : (
-                  outputHistory.map((entry, index) => (
+                  history.map((entry, index) => (
                     <div key={index} className="flex gap-2">
                       <span className={cn(
                         "flex-shrink-0",
@@ -157,12 +146,6 @@ export function ViewShell({ activeView }: { activeView: string }) {
                       </span>
                     </div>
                   ))
-                )}
-                {isLoading && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Executing...</span>
-                  </div>
                 )}
               </pre>
             </div>
