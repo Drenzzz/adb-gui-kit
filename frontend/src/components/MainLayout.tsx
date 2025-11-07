@@ -66,6 +66,7 @@ export function MainLayout() {
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [shellHistory, setShellHistory] = useState<HistoryEntry[]>([]);
+  const [shellCommandHistory, setShellCommandHistory] = useState<string[]>([]);
 
   const navIconClass = cn(
     "h-4 w-4 transition-all duration-200",
@@ -91,6 +92,8 @@ export function MainLayout() {
             activeView={activeView} 
             history={shellHistory}
             setHistory={setShellHistory}
+            commandHistory={shellCommandHistory}
+            setCommandHistory={setShellCommandHistory}
           />
         );
       default:

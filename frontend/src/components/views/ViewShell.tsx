@@ -17,15 +17,49 @@ interface ViewShellProps {
   activeView: string;
   history: HistoryEntry[];
   setHistory: React.Dispatch<React.SetStateAction<HistoryEntry[]>>;
+  commandHistory: string[];
+  setCommandHistory: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
-export function ViewShell({ activeView, history, setHistory }: ViewShellProps) {
+export function ViewShell({ 
+  activeView, 
+  history, 
+  setHistory,
+  commandHistory,
+  setCommandHistory
+}: ViewShellProps) {
   const [command, setCommand] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [historyIndex, setHistoryIndex] = useState(commandHistory.length);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (commandHistory.length === 0) return;
+      
+      const newIndex = Math.max(0, historyIndex - 1);
+      setHistoryIndex(newIndex);
+      setCommand(commandHistory[newIndex] || "");
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (commandHistory.length === 0) return;
+
+      const newIndex = Math.min(commandHistory.length, historyIndex + 1);
+      setHistoryIndex(newIndex);
+      
+      if (newIndex === commandHistory.length) {
+        setCommand("");
+      } else {
+        setCommand(commandHistory[newIndex]);
+      }
+      return;
+    }
+
     if (e.key !== 'Enter' || isLoading || command.trim() === "") {
       return;
     }
@@ -33,6 +67,11 @@ export function ViewShell({ activeView, history, setHistory }: ViewShellProps) {
     e.preventDefault();
     const trimmedCommand = command.trim();
     
+    if (commandHistory[commandHistory.length - 1] !== trimmedCommand) {
+      setCommandHistory([...commandHistory, trimmedCommand]);
+    }
+    setHistoryIndex(commandHistory.length + 1);
+
     setIsLoading(true);
     setCommand("");
     
@@ -40,11 +79,10 @@ export function ViewShell({ activeView, history, setHistory }: ViewShellProps) {
       ...history,
       { type: 'command', text: trimmedCommand },
     ];
-    setHistory(newHistory); 
+    setHistory(newHistory);
     
     try {
       let result = "";
-      
       if (trimmedCommand.startsWith("adb shell ")) {
         const shellCmd = trimmedCommand.substring(10).trim();
         if (shellCmd) result = await RunShellCommand(shellCmd);
@@ -60,12 +98,10 @@ export function ViewShell({ activeView, history, setHistory }: ViewShellProps) {
       } else {
         throw new Error(`Unknown command: "${trimmedCommand}".`);
       }
-      
       setHistory([
         ...newHistory,
         { type: 'result', text: result.trim() || "(No output)" },
       ]);
-
     } catch (err) {
       const error = err as Error;
       setHistory([
@@ -95,6 +131,10 @@ export function ViewShell({ activeView, history, setHistory }: ViewShellProps) {
       document.getElementById('shell-input')?.focus();
     }
   }, [isLoading]);
+
+  useEffect(() => {
+    setHistoryIndex(commandHistory.length);
+  }, [commandHistory.length]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-4.5rem)] gap-4"> 
@@ -158,7 +198,10 @@ export function ViewShell({ activeView, history, setHistory }: ViewShellProps) {
               placeholder="Type command... (e.g., adb devices, adb shell ls, fastboot devices)"
               className="font-mono"
               value={command}
-              onChange={(e) => setCommand(e.target.value)}
+              onChange={(e) => {
+                setCommand(e.target.value);
+                setHistoryIndex(commandHistory.length);
+              }}
               onKeyDown={handleKeyDown}
               disabled={isLoading}
               autoFocus
