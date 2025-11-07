@@ -28,6 +28,12 @@ Built with Wails (Go + React) for a fast, lightweight.
 
 ---
 
+## Screenshots
+
+* About Screenshots [see here](screenshots/README.md)
+
+---
+
 ##  Installation
 
 1.  Go to the **[Releases](https://github.com/drenzzz/adb-gui-kit/releases)** page.
