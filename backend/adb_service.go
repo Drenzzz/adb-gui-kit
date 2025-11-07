@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"strconv"
 )
 
 type DeviceMode string
@@ -43,8 +44,86 @@ func (a *App) getProp(prop string) string {
 	if err != nil {
 		return "N/A"
 	}
-	return output
+	return strings.TrimSpace(output)
 }
+
+func (a *App) checkRootStatus() string {
+	output, err := a.runCommand("adb", "shell", "su", "-c", "id -u")
+	cleanOutput := strings.TrimSpace(output)
+	if err == nil && cleanOutput == "0" {
+		return "Yes"
+	}
+	return "No"
+}
+
+func (a *App) getIPAddress() string {
+	output, err := a.runCommand("adb", "shell", "ip", "addr", "show", "wlan0")
+	if err == nil {
+		re := regexp.MustCompile(`inet (\d+\.\d+\.\d+\.\d+)/\d+`)
+		matches := re.FindStringSubmatch(output)
+		if len(matches) > 1 {
+			return matches[1]
+		}
+	}
+
+	ip := a.getProp("dhcp.wlan0.ipaddress")
+	if ip != "N/A" && ip != "" {
+		return ip
+	}
+	
+	return "N/A (Not on WiFi?)"
+}
+
+func (a *App) getRamTotal() string {
+	output, err := a.runCommand("adb", "shell", "cat /proc/meminfo | grep MemTotal")
+	if err != nil {
+		return "N/A"
+	}
+
+	re := regexp.MustCompile(`MemTotal:\s*(\d+)\s*kB`)
+	matches := re.FindStringSubmatch(output)
+	if len(matches) < 2 {
+		return "N/A"
+	}
+
+	kb, err := strconv.ParseFloat(matches[1], 64)
+	if err != nil {
+		return "N/A"
+	}
+
+	gb := kb / 1024 / 1024
+	return fmt.Sprintf("%.1f GB", gb)
+}
+
+func (a *App) getStorageInfo() string {
+	output, err := a.runCommand("adb", "shell", "df /data")
+	if err != nil {
+		return "N/A"
+	}
+
+	lines := strings.Split(output, "\n")
+	if len(lines) < 2 {
+		return "N/A"
+	}
+
+	fields := strings.Fields(lines[1])
+	if len(fields) < 4 {
+		return "N/A"
+	}
+	
+	totalKB, errTotal := strconv.ParseFloat(fields[1], 64)
+	usedKB, errUsed := strconv.ParseFloat(fields[2], 64)
+
+	if errTotal != nil || errUsed != nil {
+		return "N/A"
+	}
+
+	totalGB := totalKB / 1024 / 1024
+	usedGB := usedKB / 1024 / 1024
+
+	return fmt.Sprintf("%.1f GB / %.1f GB", usedGB, totalGB)
+}
+
 
 func (a *App) GetDeviceInfo() (DeviceInfo, error) {
 	var info DeviceInfo
@@ -52,6 +131,12 @@ func (a *App) GetDeviceInfo() (DeviceInfo, error) {
 	info.Model = a.getProp("ro.product.model")
 	info.AndroidVersion = a.getProp("ro.build.version.release")
 	info.BuildNumber = a.getProp("ro.build.id")
+	info.Codename = a.getProp("ro.product.device")
+	info.IPAddress = a.getIPAddress()
+	info.RootStatus = a.checkRootStatus()
+	info.RamTotal = a.getRamTotal()
+	info.StorageInfo = a.getStorageInfo()
+	info.Brand = a.getProp("ro.product.brand")
 
 	batteryOutput, err := a.runShellCommand("dumpsys battery | grep level")
 	if err != nil {

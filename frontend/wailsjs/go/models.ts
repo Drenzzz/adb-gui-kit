@@ -19,6 +19,14 @@ export namespace backend {
 	    AndroidVersion: string;
 	    BuildNumber: string;
 	    BatteryLevel: string;
+	    Serial: string;
+	    IPAddress: string;
+	    RootStatus: string;
+	    Codename: string;
+	    RamTotal: string;
+	    StorageInfo: string;
+	    Brand: string;
+	    DeviceName: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new DeviceInfo(source);
@@ -30,6 +38,14 @@ export namespace backend {
 	        this.AndroidVersion = source["AndroidVersion"];
 	        this.BuildNumber = source["BuildNumber"];
 	        this.BatteryLevel = source["BatteryLevel"];
+	        this.Serial = source["Serial"];
+	        this.IPAddress = source["IPAddress"];
+	        this.RootStatus = source["RootStatus"];
+	        this.Codename = source["Codename"];
+	        this.RamTotal = source["RamTotal"];
+	        this.StorageInfo = source["StorageInfo"];
+	        this.Brand = source["Brand"];
+	        this.DeviceName = source["DeviceName"];
 	    }
 	}
 	export class FileEntry {

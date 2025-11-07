@@ -5,7 +5,8 @@ import { backend } from '../../../wailsjs/go/models';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Smartphone, Battery, Info, Server, RefreshCw, Loader2 } from "lucide-react";
+import { Smartphone, Battery, Info, Server, RefreshCw, Loader2, Hash, Wifi, ShieldCheck, Cpu, Database, Code, Building } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Device = backend.Device;
 type DeviceInfo = backend.DeviceInfo;
@@ -130,11 +131,18 @@ export function ViewDashboard({ activeView }: { activeView: string }) {
              <p className="text-muted-foreground">Click "Refresh Info" to load data.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
+
+              <InfoItem icon={<Building size={18} />} label="Brand" value={deviceInfo.Brand} />
+              <InfoItem icon={<Code size={18} />} label="Codename" value={deviceInfo.Codename} />
               <InfoItem icon={<Smartphone size={18} />} label="Model" value={deviceInfo.Model} />
-              <InfoItem icon={<Battery size={18} />} label="Battery" value={deviceInfo.BatteryLevel} />
-              <InfoItem icon={<Info size={18} />} label="Android Version" value={deviceInfo.AndroidVersion} />
               <InfoItem icon={<Server size={18} />} label="Build Number" value={deviceInfo.BuildNumber} />
+              <InfoItem icon={<Info size={18} />} label="Android Version" value={deviceInfo.AndroidVersion} />
+              <InfoItem icon={<Battery size={18} />} label="Battery" value={deviceInfo.BatteryLevel} />
+              <InfoItem icon={<Cpu size={18} />} label="Total RAM" value={deviceInfo.RamTotal} />
+              <InfoItem icon={<Database size={18} />} label="Internal Storage" value={deviceInfo.StorageInfo} />
+              <InfoItem icon={<Wifi size={18} />} label="IP Address" value={deviceInfo.IPAddress} />
+              <InfoItem icon={<ShieldCheck size={18} />} label="Root Status" value={deviceInfo.RootStatus}
+                valueClassName={deviceInfo.RootStatus === 'Yes' ? 'text-green-500 font-bold' : 'text-muted-foreground'}/>
 
             </div>
           )}
@@ -144,13 +152,25 @@ export function ViewDashboard({ activeView }: { activeView: string }) {
   );
 }
 
-function InfoItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
+function InfoItem({ 
+  icon, 
+  label, 
+  value,
+  valueClassName
+}: { 
+  icon: React.ReactNode, 
+  label: string, 
+  value: string,
+  valueClassName?: string
+}) {
   return (
     <div className="flex items-center p-3 bg-muted rounded-lg">
       <div className="mr-3 text-primary">{icon}</div>
       <div>
         <div className="text-sm text-muted-foreground">{label}</div>
-        <div className="font-semibold">{value}</div>
+        <div className={cn("font-semibold truncate", valueClassName)}>
+          {value ? value : "N/A"}
+        </div>
       </div>
     </div>
   );

@@ -14,6 +14,14 @@ type DeviceInfo struct {
 	AndroidVersion string
 	BuildNumber    string
 	BatteryLevel   string
+	Serial         string 
+	IPAddress      string 
+	RootStatus     string
+	Codename       string
+	RamTotal       string
+	StorageInfo    string
+	Brand          string
+	DeviceName     string
 }
 type FileEntry struct {
 	Name        string
