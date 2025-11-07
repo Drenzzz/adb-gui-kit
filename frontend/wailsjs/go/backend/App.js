@@ -58,6 +58,10 @@ export function Reboot(arg1) {
   return window['go']['backend']['App']['Reboot'](arg1);
 }
 
+export function RunShellCommand(arg1) {
+  return window['go']['backend']['App']['RunShellCommand'](arg1);
+}
+
 export function SelectApkFile() {
   return window['go']['backend']['App']['SelectApkFile']();
 }

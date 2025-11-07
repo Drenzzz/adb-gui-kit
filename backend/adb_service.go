@@ -414,3 +414,17 @@ func (a *App) DisconnectWirelessAdb(ipAddress string, port string) (string, erro
 	
 	return cleanOutput, nil
 }
+
+func (a *App) RunShellCommand(command string) (string, error) {
+	if command == "" {
+		return "", fmt.Errorf("command cannot be empty")
+	}
+
+	output, err := a.runShellCommand(command)
+	if err != nil {
+		return "", fmt.Errorf("command failed: %w. Output: %s", err, output)
+	}
+
+	return output, nil
+}
+
