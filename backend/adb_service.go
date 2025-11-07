@@ -350,3 +350,41 @@ func (a *App) SideloadPackage(filePath string) (string, error) {
 
 	return output, nil
 }
+
+func (a *App) EnableWirelessAdb(port string) (string, error) {
+	if port == "" {
+		port = "5555"
+	}
+	
+	output, err := a.runCommand("adb", "tcpip", port)
+	if err != nil {
+		return "", fmt.Errorf("failed to enable tcpip (is device connected via USB?): %w. Output: %s", err, output)
+	}
+	
+	return output, nil
+}
+
+func (a *App) ConnectWirelessAdb(ipAddress string, port string) (string, error) {
+	if ipAddress == "" {
+		return "", fmt.Errorf("IP address cannot be empty")
+	}
+	if port == "" {
+		port = "5555"
+	}
+	
+	address := fmt.Sprintf("%s:%s", ipAddress, port)
+	
+	output, _ := a.runCommand("adb", "connect", address)
+
+	cleanOutput := strings.TrimSpace(output)
+	
+	if strings.Contains(cleanOutput, "connected to") || strings.Contains(cleanOutput, "already connected to") {
+		return cleanOutput, nil
+	}
+	
+	if cleanOutput == "" {
+		 return "", fmt.Errorf("failed to connect. No device found or IP is wrong")
+	}
+	
+	return "", fmt.Errorf(cleanOutput)
+}
