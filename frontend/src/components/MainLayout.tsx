@@ -303,7 +303,7 @@ export function MainLayout() {
             </Tooltip>
           </motion.aside>
 
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto custom-scroll">
             <div className="min-h-full p-6">
               <AnimatePresence mode="wait">
                 <motion.div
