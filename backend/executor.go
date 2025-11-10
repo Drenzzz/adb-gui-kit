@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 )
 
 func (a *App) getBinaryPath(name string) (string, error) {
@@ -29,11 +28,11 @@ func (a *App) getBinaryPath(name string) (string, error) {
 	if runtime.GOOS == "windows" {
 		prodPath += ".exe"
 	}
-	
+
 	if _, err := os.Stat(prodPath); err == nil {
 		return prodPath, nil
 	}
-	
+
 	return "", fmt.Errorf("binary '%s' not found in dev path '%s' or prod path '%s'", name, devPath, prodPath)
 }
 
@@ -45,8 +44,8 @@ func (a *App) runCommand(name string, args ...string) (string, error) {
 
 	cmd := exec.Command(binaryPath, args...)
 
-	if runtime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	if attr := defaultSysProcAttr(); attr != nil {
+		cmd.SysProcAttr = attr
 	}
 
 	var out bytes.Buffer
@@ -70,8 +69,8 @@ func (a *App) runShellCommand(shellCommand string) (string, error) {
 
 	cmd := exec.Command(binaryPath, "shell", shellCommand)
 
-	if runtime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	if attr := defaultSysProcAttr(); attr != nil {
+		cmd.SysProcAttr = attr
 	}
 
 	var out bytes.Buffer
