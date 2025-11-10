@@ -129,12 +129,45 @@ export function ViewDashboard({ activeView }: { activeView: string }) {
           ) : !deviceInfo ? (
              <p className="text-muted-foreground">Click "Refresh Info" to load data.</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               
               <InfoItem icon={<Smartphone size={18} />} label="Model" value={deviceInfo.Model} />
               <InfoItem icon={<Battery size={18} />} label="Battery" value={deviceInfo.BatteryLevel} />
-              <InfoItem icon={<Info size={18} />} label="Android Version" value={deviceInfo.AndroidVersion} />
+              <InfoItem icon={<Info size={18} />} label="Android" value={deviceInfo.AndroidVersion} />
+              <InfoItem icon={<Server size={18} />} label="Security Patch" value={deviceInfo.SecurityPatch} />
               <InfoItem icon={<Server size={18} />} label="Build Number" value={deviceInfo.BuildNumber} />
+              <InfoItem icon={<RefreshCw size={18} />} label="Uptime" value={deviceInfo.Uptime} />
+              <InfoItem 
+                icon={<Server size={18} />} 
+                label="Storage" 
+                value={deviceInfo.StorageUsed && deviceInfo.StorageTotal 
+                  ? `${deviceInfo.StorageUsed} / ${deviceInfo.StorageTotal}` 
+                  : "N/A"} 
+              />
+              <InfoItem 
+                icon={<Server size={18} />} 
+                label="Root" 
+                value={deviceInfo.IsRooted ? "Rooted ⚠️" : "Not Rooted ✅"} 
+              />
+              <InfoItem 
+                icon={<Server size={18} />} 
+                label="Bootloader" 
+                value={deviceInfo.BootloaderLocked ? "Locked ✅" : "Unlocked ⚠️"} 
+              />
+              <InfoItem 
+                icon={<Smartphone size={18} />} 
+                label="Screen" 
+                value={deviceInfo.ScreenResolution + (deviceInfo.ScreenDensity ? ` (${deviceInfo.ScreenDensity})` : "")} 
+              />
+              <InfoItem icon={<Server size={18} />} label="Local IP" value={deviceInfo.LocalIP} />
+              <InfoItem 
+                icon={<Server size={18} />} 
+                label="WiFi" 
+                value={deviceInfo.WiFiStatus === 'Connected' ? "Connected ✅" : "Disconnected"} 
+              />
+              <InfoItem icon={<Server size={18} />} label="Serial" value={deviceInfo.SerialNumber} />
+              <InfoItem icon={<Server size={18} />} label="Baseband" value={deviceInfo.Baseband} />
+              <InfoItem icon={<Smartphone size={18} />} label="IMEI" value={deviceInfo.IMEI} />
 
             </div>
           )}
