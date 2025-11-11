@@ -1,4 +1,4 @@
-# ADB-Kit 
+# ADBKit 
 
 A simple, modern GUI for ADB and Fastboot. 
 Built with Wails (Go + React) for a fast, lightweight.
@@ -7,24 +7,29 @@ Built with Wails (Go + React) for a fast, lightweight.
 
 ##  Features
 
-* **Dashboard:**
-    * View connected device info (Model, Battery, Status).
-    * Auto-detects ADB & Fastboot devices.
-* **Utilities:**
-    * One-click reboot buttons (Reboot, Recovery, Bootloader).
-* **App Manager:**
+* **Polished UX**
+    * Welcome/loading screen.
+    * Integrated light/dark theme toggle.
+* **Dashboard**
+    * Unified connected-device list with editable nicknames (stored locally).
+    * Rich device info card.
+    * Wireless ADB, connect/disconnect via IP/port, and quick status refresh.
+* **Terminal (Universal Shell)**
+    * Run `adb`, `adb shell`, or `fastboot` commands from a terminal.
+* **Utilities**
+    * One-click reboot actions (system, recovery, bootloader) with automatic ADB/Fastboot detection.
+* **App Manager**
     * Install APKs from your computer.
-    * Uninstall packages by name.
-    * Includes a confirmation dialog to prevent mistakes.
-* **File Explorer:**
-    * Browse device `/sdcard/` directory.
-    * **Push:** Upload files from PC to device.
-    * **Pull:** Download files/folders from device to PC.
-    * Includes loading and empty folder states.
-* **Flasher:**
-    * Flash `.img` files to a specific partition (e.g., `boot`, `recovery`).
-    * Wipe Data (Factory Reset) with a safety confirmation dialog.
-    * Flash a flashable ZIP via adb sideload while your device is in recovery.
+    * Uninstall packages by name with confirmation dialog.
+* **File Explorer**
+    * Browse the `/sdcard/` directory.
+    * **Import:** Upload files from PC to device.
+    * **Export:** Download files/folders from device to PC.
+    * Includes loading and empty-folder states.
+* **Flasher**
+    * Flash `.img` files to specific partitions (e.g., `boot`, `recovery`).
+    * Wipe Data (factory reset) with safety confirmation.
+    * Flash ZIP packages through `adb sideload` while in recovery mode.
 
 ---
 
@@ -37,7 +42,7 @@ Built with Wails (Go + React) for a fast, lightweight.
 ##  Installation
 
 1.  Go to the **[Releases](https://github.com/drenzzz/adb-gui-kit/releases)** page.
-2.  Download the `.zip` (Windows) file.
+2.  Download the `.zip` file.
 3.  Unzip the file.
 4.  **IMPORTANT:** Keep the `ADB-Kit` executable in the same folder as `bin/windows/` (on Windows) or `bin/linux/` (on Linux) so the bundled platform tools (`adb`, `fastboot`, etc.) can be found.
 5.  Run the application.
@@ -70,4 +75,3 @@ Built with Wails (Go + React) for a fast, lightweight.
     ```bash
     wails build
     ```
-    
