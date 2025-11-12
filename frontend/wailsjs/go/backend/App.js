@@ -18,6 +18,10 @@ export function DeleteFile(arg1) {
   return window['go']['backend']['App']['DeleteFile'](arg1);
 }
 
+export function DeleteMultipleFiles(arg1) {
+  return window['go']['backend']['App']['DeleteMultipleFiles'](arg1);
+}
+
 export function DisablePackage(arg1) {
   return window['go']['backend']['App']['DisablePackage'](arg1);
 }
@@ -78,6 +82,10 @@ export function PullFile(arg1, arg2) {
   return window['go']['backend']['App']['PullFile'](arg1, arg2);
 }
 
+export function PullMultipleFiles(arg1) {
+  return window['go']['backend']['App']['PullMultipleFiles'](arg1);
+}
+
 export function PushFile(arg1, arg2) {
   return window['go']['backend']['App']['PushFile'](arg1, arg2);
 }
@@ -136,6 +144,10 @@ export function SelectZipFile() {
 
 export function SideloadPackage(arg1) {
   return window['go']['backend']['App']['SideloadPackage'](arg1);
+}
+
+export function UninstallMultiplePackages(arg1) {
+  return window['go']['backend']['App']['UninstallMultiplePackages'](arg1);
 }
 
 export function UninstallPackage(arg1) {

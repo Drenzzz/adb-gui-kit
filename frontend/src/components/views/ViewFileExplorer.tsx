@@ -12,6 +12,8 @@ import {
   DeleteFile,
   CreateFolder,
   RenameFile,
+  DeleteMultipleFiles,
+  PullMultipleFiles,
 } from '../../../wailsjs/go/backend/App';
 import { backend } from '../../../wailsjs/go/models';
 
@@ -75,7 +77,6 @@ type FileEntry = backend.FileEntry;
 export function ViewFileExplorer({ activeView }: { activeView: string }) {
   const [fileList, setFileList] = useState<FileEntry[]>([]);
   const [currentPath, setCurrentPath] = useState('/sdcard/');
-  const [selectedFile, setSelectedFile] = useState<FileEntry | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const [isPushingFile, setIsPushingFile] = useState(false);
@@ -90,15 +91,17 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
 
   useEffect(() => {
-    if (isRenameOpen && selectedFile) {
-      setNewName(selectedFile.Name);
+    if (isRenameOpen && selectedFileNames.length === 1) {
+      setNewName(selectedFileNames[0]);
     } else {
       setNewName('');
     }
-  }, [isRenameOpen, selectedFile]);
+  }, [isRenameOpen, selectedFileNames]);
 
   useEffect(() => {
     if (activeView === 'files') {
@@ -108,7 +111,6 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
 
   const loadFiles = async (path: string) => {
     setIsLoading(true);
-    setSelectedFile(null);
     setSelectedFileNames([]);
     try {
       const files = await ListFiles(path);
@@ -134,7 +136,8 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
   };
 
   const handleRowClick = (file: FileEntry) => {
-    setSelectedFile(file);
+    const isSelected = selectedFileNames.includes(file.Name);
+    handleSelectFile(file.Name, !isSelected);
   };
 
   const handleRowDoubleClick = (file: FileEntry) => {
@@ -223,94 +226,94 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
     setIsPushingFolder(false);
   };
 
-  const handlePull = async () => {
-    if (!selectedFile) {
-      toast.error('No file or folder selected to pull.');
+  const handleMultiExport = async () => {
+    if (selectedFileNames.length === 0) {
+      toast.error('No files selected to export.');
       return;
     }
-    if (selectedFile.Type !== 'File' && selectedFile.Type !== 'Directory') {
-      toast.error('Cannot export this item type.', {
-        description: `Selected type: ${selectedFile.Type}`,
-      });
-      return;
-    }
+
     setIsPulling(true);
-    let toastId: string | number = '';
+    const remotePaths = selectedFileNames.map((name) =>
+      path.posix.join(currentPath, name)
+    );
+    const toastId = toast.loading(
+      `Exporting ${selectedFileNames.length} items...`
+    );
+
     try {
-      const remotePath = path.posix.join(currentPath, selectedFile.Name);
-      let localPath = '';
-      if (selectedFile.Type === 'Directory') {
-        toast.info('Select a folder to save the directory into.');
-        localPath = await SelectDirectoryForPull();
+      const output = await PullMultipleFiles(remotePaths);
+
+      if (output.includes('cancelled by user')) {
+        toast.info('Export Cancelled', { id: toastId });
       } else {
-        localPath = await SelectSaveDirectory(selectedFile.Name);
+        toast.success('Batch Export Complete', {
+          description: output,
+          id: toastId,
+          duration: 8000,
+        });
       }
-      if (!localPath) {
-        setIsPulling(false);
-        return;
-      }
-      toastId = toast.loading(`Pulling ${selectedFile.Name}...`, {
-        description: `From: ${remotePath}`,
-      });
-      const output = await PullFile(remotePath, localPath);
-      toast.success('Export Complete', {
-        description: `Saved to ${localPath}`,
+      setSelectedFileNames([]);
+    } catch (error) {
+      console.error('Batch export error:', error);
+      toast.error('Batch Export Failed', {
+        description: String(error),
         id: toastId,
       });
-    } catch (error) {
-      console.error('Export error:', error);
-      if (toastId) {
-        toast.error('Export Failed', {
-          description: String(error),
-          id: toastId,
-        });
-      } else {
-        toast.error('Export Failed', { description: String(error) });
-      }
     }
     setIsPulling(false);
   };
 
-  const handleDelete = async () => {
-    if (!selectedFile) {
-      toast.error('No file selected to delete.');
+  const handleMultiDelete = async () => {
+    if (selectedFileNames.length === 0) {
+      toast.error('No files selected to delete.');
       return;
     }
+
     setIsDeleting(true);
-    const fullPath = path.posix.join(currentPath, selectedFile.Name);
-    const toastId = toast.loading(`Deleting ${selectedFile.Name}...`);
+    const fullPaths = selectedFileNames.map((name) =>
+      path.posix.join(currentPath, name)
+    );
+    const toastId = toast.loading(
+      `Deleting ${selectedFileNames.length} items...`
+    );
+
     try {
-      const output = await DeleteFile(fullPath);
-      toast.success('Delete Successful', {
+      const output = await DeleteMultipleFiles(fullPaths);
+      toast.success('Batch Delete Complete', {
         description: output,
         id: toastId,
+        duration: 8000,
       });
       loadFiles(currentPath);
-      setSelectedFile(null);
+      setSelectedFileNames([]);
     } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Delete Failed', {
+      console.error('Batch delete error:', error);
+      toast.error('Batch Delete Failed', {
         description: String(error),
         id: toastId,
       });
     } finally {
       setIsDeleting(false);
+      setIsDeleteOpen(false);
     }
   };
 
   const handleRename = async () => {
-    if (!selectedFile) {
-      toast.error('No file selected to rename.');
+    if (selectedFileNames.length !== 1) {
+      toast.error('Please select exactly one file to rename.');
       return;
     }
     if (!newName || newName.trim() === '') {
       toast.error('New name cannot be empty.');
       return;
     }
+
     setIsRenaming(true);
-    const oldPath = path.posix.join(currentPath, selectedFile.Name);
+    const oldName = selectedFileNames[0];
+    const oldPath = path.posix.join(currentPath, oldName);
     const newPath = path.posix.join(currentPath, newName);
     const toastId = toast.loading(`Renaming to ${newName}...`);
+
     try {
       const output = await RenameFile(oldPath, newPath);
       toast.success('Rename Successful', {
@@ -319,7 +322,7 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
       });
       setIsRenameOpen(false);
       loadFiles(currentPath);
-      setSelectedFile(null);
+      setSelectedFileNames([]);
     } catch (error) {
       console.error('Rename error:', error);
       toast.error('Rename Failed', {
@@ -377,7 +380,7 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
     }
   };
 
-  const isBusy =
+const isBusy =
     isLoading ||
     isPushingFile ||
     isPushingFolder ||
@@ -385,10 +388,9 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
     isDeleting ||
     isRenaming ||
     isCreatingFolder;
-  const isPullDisabled =
-    isPulling || !selectedFile || (selectedFile.Type !== 'File' && selectedFile.Type !== 'Directory');
-  const isDeleteDisabled = isDeleting || !selectedFile;
-  const isRenameDisabled = isRenaming || !selectedFile;
+  const isExportDisabled = isPulling || selectedFileNames.length === 0;
+  const isDeleteDisabled = isDeleting || selectedFileNames.length === 0;
+  const isRenameDisabled = isRenaming || selectedFileNames.length !== 1;
 
   return (
     <>
@@ -439,7 +441,7 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
           <DialogHeader>
             <DialogTitle>Rename</DialogTitle>
             <DialogDescription>
-              Enter a new name for {selectedFile?.Name}
+              Enter a new name for {selectedFileNames.length === 1 ? selectedFileNames[0] : 'the selected item'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -469,6 +471,40 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="text-destructive" />
+              Are you absolutely sure?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete
+              <br />
+              <span className="font-mono font-semibold text-foreground">
+                {selectedFileNames.length} selected item(s)
+              </span>
+              , including all contents if any are folders.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: 'destructive' })}
+              onClick={handleMultiDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Yes, Delete {selectedFileNames.length}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex flex-col h-[calc(100vh-4rem)] gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -488,7 +524,6 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
                   <RefreshCw className="h-4 w-4" />
                 )}
               </Button>
-
               <Button
                 variant="outline"
                 onClick={handlePushFile}
@@ -505,7 +540,6 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
                 <FolderUp className="mr-2 h-4 w-4" />
                 Import Folder
               </Button>
-              
               <Button
                 variant="default"
                 disabled={isBusy}
@@ -524,60 +558,23 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
               </Button>
               <Button
                 variant="default"
-                onClick={handlePull}
-                disabled={isPullDisabled || isBusy}
+                onClick={handleMultiExport}
+                disabled={isExportDisabled || isBusy}
               >
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                Export ({selectedFileNames.length})
               </Button>
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="destructive"
-                    disabled={isDeleteDisabled || isBusy}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <AlertTriangle className="text-destructive" />
-                      Are you absolutely sure?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently
-                      delete:
-                      <br />
-                      <span className="font-mono font-semibold text-foreground">
-                        {selectedFile?.Name}
-                      </span>
-                      {selectedFile?.Type === 'Directory' &&
-                        ' (and all its contents)'}
-                      .
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className={buttonVariants({ variant: 'destructive' })}
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="mr-2 h-4 w-4" />
-                      )}
-                      Yes, Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button
+                variant="destructive"
+                disabled={isDeleteDisabled || isBusy}
+                onClick={() => setIsDeleteOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete ({selectedFileNames.length})
+              </Button>
             </div>
           </CardHeader>
+
           <CardContent>
             <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
               <Button
@@ -635,10 +632,9 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
                     fileList.map((file) => (
                       <TableRow
                         key={file.Name}
-                        onDoubleClick={() => handleRowDoubleClick(file)}
                         onClick={() => handleRowClick(file)}
+                        onDoubleClick={() => handleRowDoubleClick(file)}
                         data-state={
-                          selectedFile?.Name === file.Name ||
                           selectedFileNames.includes(file.Name)
                             ? 'selected'
                             : ''
@@ -654,11 +650,10 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
                                 checked as boolean
                               )
                             }
-                            onClick={(e) => e.stopPropagation()} 
+                            onClick={(e) => e.stopPropagation()}
                             aria-label="Select row"
                           />
                         </TableCell>
-                        
                         <TableCell>
                           {file.Type === 'Directory' ? (
                             <Folder className="h-4 w-4 text-blue-500" />

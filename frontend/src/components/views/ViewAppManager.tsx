@@ -9,6 +9,7 @@ import {
   DisablePackage,
   EnablePackage,
   PullApk,
+  UninstallMultiplePackages,
 } from '../../../wailsjs/go/backend/App';
 import { backend } from '../../../wailsjs/go/models';
 
@@ -85,6 +86,9 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
   const [isPullingPackageName, setIsPullingPackageName] = useState<string>('');
 
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
+
+  const [isBatchUninstalling, setIsBatchUninstalling] = useState(false);
+  const [isBatchUninstallOpen, setIsBatchUninstallOpen] = useState(false);
 
   const loadPackages = async (currentFilter: FilterType) => {
     setIsLoadingList(true);
@@ -294,6 +298,38 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
       setSelectedPackages([]);
     }
   };
+
+  const handleMultiUninstall = async () => {
+    if (selectedPackages.length === 0) {
+      toast.error('No packages selected to uninstall.');
+      return;
+    }
+
+    setIsBatchUninstalling(true);
+    const toastId = toast.loading(
+      `Uninstalling ${selectedPackages.length} packages...`
+    );
+
+    try {
+      const output = await UninstallMultiplePackages(selectedPackages);
+      toast.success('Batch Uninstall Complete', {
+        description: output,
+        id: toastId,
+        duration: 8000,
+      });
+      loadPackages(filter);
+      setSelectedPackages([]);
+    } catch (error) {
+      console.error('Batch uninstall error:', error);
+      toast.error('Batch Uninstall Failed', {
+        description: String(error),
+        id: toastId,
+      });
+    } finally {
+      setIsBatchUninstalling(false);
+      setIsBatchUninstallOpen(false);
+    }
+  };
   
   return (
     <>
@@ -325,165 +361,209 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package />
-              Install APK
-            </CardTitle>
-            <CardDescription>
-              Select an .apk file from your computer to install it on your
-              device.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleSelectApk}
-              disabled={isInstalling}
+      <AlertDialog
+        open={isBatchUninstallOpen}
+        onOpenChange={setIsBatchUninstallOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to uninstall{' '}
+              <span className="font-semibold text-foreground">
+                {selectedPackages.length} selected packages
+              </span>
+              . This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBatchUninstalling}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: 'destructive' })}
+              onClick={handleMultiUninstall}
+              disabled={isBatchUninstalling}
             >
-              <FileUp className="mr-2 h-4 w-4" />
-              Select APK File
-            </Button>
-            <p className="text-sm text-muted-foreground truncate">
-              {apkPath ? apkPath : 'No file selected.'}
-            </p>
-            <Button
-              variant="default"
-              className="w-full"
-              disabled={isInstalling || !apkPath}
-              onClick={handleInstall}
-            >
-              {isInstalling ? (
+              {isBatchUninstalling ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Package className="mr-2 h-4 w-4" />
+                <Trash2 className="mr-2 h-4 w-4" />
               )}
-              Install
-            </Button>
-          </CardContent>
-        </Card>
+              Yes, Uninstall {selectedPackages.length}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trash2 />
-              Uninstall Package (by Name)
-            </CardTitle>
-            <CardDescription>
-              Manually enter a package name to uninstall it.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="package-name" className="text-sm font-medium">
-                Package Name
-              </label>
-              <Input
-                id="package-name"
-                placeholder="e.g., com.example.app"
-                value={packageName}
-                onChange={(e) => setPackageName(e.target.value)}
-                disabled={isUninstalling}
-              />
-            </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  disabled={isUninstalling || !packageName}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Uninstall
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    You will delete the package:{' '}
-                    <span className="font-semibold text-foreground">
-                      {packageName}
-                    </span>
-                    .
-                    <br />
-                    This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Batal</AlertDialogCancel>
-                  <AlertDialogAction
-                    className={buttonVariants({ variant: 'destructive' })}
-                    onClick={handleUninstall}
-                    disabled={isUninstalling}
+      <div className="flex flex-col gap-6">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package />
+                Install APK
+              </CardTitle>
+              <CardDescription>
+                Select an .apk file from your computer to install it on your
+                device.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleSelectApk}
+                disabled={isInstalling}
+              >
+                <FileUp className="mr-2 h-4 w-4" />
+                Select APK File
+              </Button>
+              <p className="text-sm text-muted-foreground truncate">
+                {apkPath ? apkPath : 'No file selected.'}
+              </p>
+              <Button
+                variant="default"
+                className="w-full"
+                disabled={isInstalling || !apkPath}
+                onClick={handleInstall}
+              >
+                {isInstalling ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Package className="mr-2 h-4 w-4" />
+                )}
+                Install
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trash2 />
+                Uninstall Package (by Name)
+              </CardTitle>
+              <CardDescription>
+                Manually enter a package name to uninstall it.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="package-name" className="text-sm font-medium">
+                  Package Name
+                </label>
+                <Input
+                  id="package-name"
+                  placeholder="e.g., com.example.app"
+                  value={packageName}
+                  onChange={(e) => setPackageName(e.target.value)}
+                  disabled={isUninstalling}
+                />
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    disabled={isUninstalling || !packageName}
                   >
-                    {isUninstalling ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="mr-2 h-4 w-4" />
-                    )}
-                    Yes, Uninstall
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
-        </Card>
-      </div>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Uninstall
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Anda akan menghapus paket:{' '}
+                      <span className="font-semibold text-foreground">
+                        {packageName}
+                      </span>
+                      .
+                      <br />
+                      Tindakan ini tidak dapat dibatalkan.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                    <AlertDialogAction
+                      className={buttonVariants({ variant: 'destructive' })}
+                      onClick={handleUninstall}
+                      disabled={isUninstalling}
+                    >
+                      {isUninstalling ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-2 h-4 w-4" />
+                      )}
+                      Ya, Uninstall
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardContent>
+          </Card>
+        </div>
 
-      <Card className="flex-1 flex flex-col overflow-hidden min-h-[400px]">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex-1">
-            <CardTitle className="flex items-center gap-2">
-              <List />
-              Installed Packages
-            </CardTitle>
-            <CardDescription>
-              List of applications installed on the device.
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={filter === 'user' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('user')}
-            >
-              User
-            </Button>
-            <Button
-              variant={filter === 'system' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('system')}
-            >
-              System
-            </Button>
-            <Button
-              variant={filter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('all')}
-            >
-              All
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => loadPackages(filter)}
-              disabled={isLoadingList}
-            >
-              {isLoadingList ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </CardHeader>
-
+        <Card className="flex-1 flex flex-col overflow-hidden min-h-[400px]">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex-1">
+              <CardTitle className="flex items-center gap-2">
+                <List />
+                Installed Packages
+              </CardTitle>
+              <CardDescription>
+                List of applications installed on the device.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={filter === 'user' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('user')}
+              >
+                User
+              </Button>
+              <Button
+                variant={filter === 'system' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('system')}
+              >
+                System
+              </Button>
+              <Button
+                variant={filter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('all')}
+              >
+                All
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => loadPackages(filter)}
+                disabled={isLoadingList || isBatchUninstalling}
+              >
+                {isLoadingList ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={selectedPackages.length === 0 || isBatchUninstalling}
+                onClick={() => setIsBatchUninstallOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Uninstall Selected ({selectedPackages.length})
+              </Button>
+            </div>
+          </CardHeader>
           <CardContent className="p-0 flex-1 flex overflow-hidden min-h-0">
             <ScrollArea className="flex-1 h-full">
               <Table>
@@ -548,7 +628,6 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                             aria-label="Select row"
                           />
                         </TableCell>
-                        
                         <TableCell>
                           {pkg.IsEnabled ? (
                             <span className="flex items-center text-emerald-500">
@@ -562,11 +641,9 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                             </span>
                           )}
                         </TableCell>
-                        
                         <TableCell className="font-mono">
                           {pkg.PackageName}
                         </TableCell>
-
                         <TableCell className="text-right">
                           {isTogglingPackageName === pkg.PackageName ||
                           isPullingPackageName === pkg.PackageName ? (
@@ -579,7 +656,6 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent>
-                                
                                 <DropdownMenuItem
                                   onClick={() => handleTogglePackage(pkg)}
                                 >
@@ -590,14 +666,12 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                                   )}
                                   {pkg.IsEnabled ? 'Disable' : 'Enable'}
                                 </DropdownMenuItem>
-
                                 <DropdownMenuItem
                                   onClick={() => handlePullApk(pkg)}
                                 >
                                   <Download className="mr-2 h-4 w-4" />
                                   Pull APK
                                 </DropdownMenuItem>
-                                
                                 <DropdownMenuItem
                                   onClick={() => {
                                     setPkgToAction(pkg.PackageName);
@@ -607,7 +681,6 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                                   <Eraser className="mr-2 h-4 w-4" />
                                   Clear Data
                                 </DropdownMenuItem>
-                                
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}

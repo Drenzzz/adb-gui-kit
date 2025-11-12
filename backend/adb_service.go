@@ -404,6 +404,96 @@ func (a *App) PullApk(packageName string) (string, error) {
 	return fmt.Sprintf("APK saved to %s", localPath), nil
 }
 
+func (a *App) UninstallMultiplePackages(packageNames []string) (string, error) {
+	if len(packageNames) == 0 {
+		return "", fmt.Errorf("no packages selected")
+	}
+
+	var successCount int
+	var failCount int
+	var errorMessages strings.Builder
+
+	for _, pkgName := range packageNames {
+		_, err := a.UninstallPackage(pkgName)
+		if err != nil {
+			failCount++
+			errorMessages.WriteString(fmt.Sprintf("Failed %s: %v\n", pkgName, err))
+		} else {
+			successCount++
+		}
+	}
+
+	summary := fmt.Sprintf("Successfully uninstalled %d packages.", successCount)
+	if failCount > 0 {
+		summary += fmt.Sprintf(" Failed to uninstall %d packages.\nDetails:\n%s", failCount, errorMessages.String())
+	}
+
+	return summary, nil
+}
+
+func (a *App) DeleteMultipleFiles(fullPaths []string) (string, error) {
+	if len(fullPaths) == 0 {
+		return "", fmt.Errorf("no files selected")
+	}
+
+	var successCount int
+	var failCount int
+	var errorMessages strings.Builder
+
+	for _, path := range fullPaths {
+		_, err := a.DeleteFile(path)
+		if err != nil {
+			failCount++
+			errorMessages.WriteString(fmt.Sprintf("Failed %s: %v\n", path, err))
+		} else {
+			successCount++
+		}
+	}
+
+	summary := fmt.Sprintf("Successfully deleted %d items.", successCount)
+	if failCount > 0 {
+		summary += fmt.Sprintf(" Failed to delete %d items.\nDetails:\n%s", failCount, errorMessages.String())
+	}
+
+	return summary, nil
+}
+
+func (a *App) PullMultipleFiles(remotePaths []string) (string, error) {
+	if len(remotePaths) == 0 {
+		return "", fmt.Errorf("no files selected to export")
+	}
+
+	localSaveFolder, err := a.SelectDirectoryForPull()
+	if err != nil {
+		return "", fmt.Errorf("failed to open folder dialog: %w", err)
+	}
+
+	if localSaveFolder == "" {
+		return "Export cancelled by user.", nil
+	}
+
+	var successCount int
+	var failCount int
+	var errorMessages strings.Builder
+
+	for _, remotePath := range remotePaths {
+		_, err := a.PullFile(remotePath, localSaveFolder)
+		if err != nil {
+			failCount++
+			errorMessages.WriteString(fmt.Sprintf("Failed %s: %v\n", remotePath, err))
+		} else {
+			successCount++
+		}
+	}
+
+	summary := fmt.Sprintf("Successfully exported %d items to %s.", successCount, localSaveFolder)
+	if failCount > 0 {
+		summary += fmt.Sprintf(" Failed to export %d items.\nDetails:\n%s", failCount, errorMessages.String())
+	}
+
+	return summary, nil
+}
+
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
 	output, err := a.runCommand("adb", "shell", "ls", "-lA", path)
 	if err != nil {

@@ -10,6 +10,8 @@ export function CreateFolder(arg1:string):Promise<string>;
 
 export function DeleteFile(arg1:string):Promise<string>;
 
+export function DeleteMultipleFiles(arg1:Array<string>):Promise<string>;
+
 export function DisablePackage(arg1:string):Promise<string>;
 
 export function DisconnectWirelessAdb(arg1:string,arg2:string):Promise<string>;
@@ -40,6 +42,8 @@ export function PullApk(arg1:string):Promise<string>;
 
 export function PullFile(arg1:string,arg2:string):Promise<string>;
 
+export function PullMultipleFiles(arg1:Array<string>):Promise<string>;
+
 export function PushFile(arg1:string,arg2:string):Promise<string>;
 
 export function Reboot(arg1:string):Promise<void>;
@@ -69,6 +73,8 @@ export function SelectSaveFile(arg1:string):Promise<string>;
 export function SelectZipFile():Promise<string>;
 
 export function SideloadPackage(arg1:string):Promise<string>;
+
+export function UninstallMultiplePackages(arg1:Array<string>):Promise<string>;
 
 export function UninstallPackage(arg1:string):Promise<string>;
 
