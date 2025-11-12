@@ -1,19 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import path from 'path-browserify';
 
-import { 
-  ListFiles, 
-  PushFile, 
-  PullFile, 
-  SelectFileToPush, 
-  SelectSaveDirectory, 
+import {
+  ListFiles,
+  PushFile,
+  PullFile,
+  SelectFileToPush,
+  SelectSaveDirectory,
   SelectDirectoryForPull,
-  SelectDirectoryToPush 
+  SelectDirectoryToPush,
+  DeleteFile,
 } from '../../../wailsjs/go/backend/App';
 import { backend } from '../../../wailsjs/go/models';
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Button, buttonVariants } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -21,10 +38,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
-import { Loader2, RefreshCw, Upload, Download, Folder, File, ArrowUp, FolderUp } from "lucide-react"; 
+} from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
+import {
+  Loader2,
+  RefreshCw,
+  Upload,
+  Download,
+  Folder,
+  File,
+  ArrowUp,
+  FolderUp,
+  Trash2,
+  AlertTriangle,
+} from 'lucide-react';
 
 type FileEntry = backend.FileEntry;
 
@@ -33,35 +61,36 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
   const [currentPath, setCurrentPath] = useState('/sdcard/');
   const [selectedFile, setSelectedFile] = useState<FileEntry | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const [isPushingFile, setIsPushingFile] = useState(false);
   const [isPushingFolder, setIsPushingFolder] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadFiles = async (path: string) => {
     setIsLoading(true);
-    setSelectedFile(null); 
+    setSelectedFile(null);
     try {
       const files = await ListFiles(path);
-      
+
       if (!files) {
         setFileList([]);
         setCurrentPath(path);
         setIsLoading(false);
-        return; 
+        return;
       }
-      
+
       files.sort((a, b) => {
         if (a.Type === 'Directory' && b.Type !== 'Directory') return -1;
         if (a.Type !== 'Directory' && b.Type === 'Directory') return 1;
         return a.Name.localeCompare(b.Name);
       });
-      
+
       setFileList(files);
       setCurrentPath(path);
     } catch (error) {
-      console.error("Failed to list files:", error);
-      toast.error("Failed to list files", { description: String(error) });
+      console.error('Failed to list files:', error);
+      toast.error('Failed to list files', { description: String(error) });
       setCurrentPath(currentPath);
     }
     setIsLoading(false);
@@ -191,9 +220,45 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
     }
     setIsPulling(false);
   };
-  
-  const isBusy = isLoading || isPushingFile || isPushingFolder || isPulling;
-  const isPullDisabled = isPulling || !selectedFile || (selectedFile.Type !== 'File' && selectedFile.Type !== 'Directory');
+
+  const handleDelete = async () => {
+    if (!selectedFile) {
+      toast.error('No file selected to delete.');
+      return;
+    }
+
+    setIsDeleting(true);
+    const fullPath = path.posix.join(currentPath, selectedFile.Name);
+    const toastId = toast.loading(`Deleting ${selectedFile.Name}...`);
+
+    try {
+      const output = await DeleteFile(fullPath);
+      toast.success('Delete Successful', {
+        description: output,
+        id: toastId,
+      });
+      loadFiles(currentPath);
+      setSelectedFile(null);
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Delete Failed', {
+        description: String(error),
+        id: toastId,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const isBusy =
+    isLoading ||
+    isPushingFile ||
+    isPushingFolder ||
+    isPulling ||
+    isDeleting;
+  const isPullDisabled =
+    isPulling || !selectedFile || (selectedFile.Type !== 'File' && selectedFile.Type !== 'Directory');
+  const isDeleteDisabled = isDeleting || !selectedFile;
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] gap-4">
@@ -221,6 +286,52 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
               {isPulling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
               Export Selected
             </Button>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  disabled={isDeleteDisabled || isBusy}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <AlertTriangle className="text-destructive" />
+                    Are you absolutely sure?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete:
+                    <br />
+                    <span className="font-mono font-semibold text-foreground">
+                      {selectedFile?.Name}
+                    </span>
+                    {selectedFile?.Type === 'Directory' &&
+                      ' (and all its contents)'}
+                    .
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className={buttonVariants({ variant: 'destructive' })}
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="mr-2 h-Trcab-4" />
+                    )}
+                    Yes, Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            
           </div>
         </CardHeader>
         <CardContent>
