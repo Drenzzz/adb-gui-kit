@@ -6,6 +6,9 @@ import {
   UninstallPackage,
   ListPackages,
   ClearData,
+  DisablePackage,
+  EnablePackage,
+  PullApk,
 } from '../../../wailsjs/go/backend/App';
 import { backend } from '../../../wailsjs/go/models';
 
@@ -45,7 +48,9 @@ import {
   List,
   MoreHorizontal,
   Eraser,
-  AlertTriangle,
+  EyeOff,
+  Eye,
+  Download,
 } from 'lucide-react';
 import {
   Table,
@@ -74,6 +79,9 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
   const [isClearing, setIsClearing] = useState(false);
   const [pkgToAction, setPkgToAction] = useState<string>('');
   const [isClearDataOpen, setIsClearDataOpen] = useState(false);
+
+  const [isTogglingPackageName, setIsTogglingPackageName] = useState<string>('');
+  const [isPullingPackageName, setIsPullingPackageName] = useState<string>('');
 
   const loadPackages = async (currentFilter: FilterType) => {
     setIsLoadingList(true);
@@ -198,6 +206,71 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
       setIsClearing(false);
       setIsClearDataOpen(false);
       setPkgToAction('');
+    }
+  };
+
+  const handleTogglePackage = async (pkg: PackageInfo) => {
+    setIsTogglingPackageName(pkg.PackageName);
+    const action = pkg.IsEnabled ? 'Disabling' : 'Enabling';
+    const toastId = toast.loading(`${action} package...`, {
+      description: pkg.PackageName,
+    });
+
+    try {
+      let output = '';
+      if (pkg.IsEnabled) {
+        output = await DisablePackage(pkg.PackageName);
+      } else {
+        output = await EnablePackage(pkg.PackageName);
+      }
+      
+      toast.success(`Package ${action.slice(0, -3)}d`, {
+        description: output,
+        id: toastId,
+      });
+
+      loadPackages(filter);
+
+    } catch (error) {
+      console.error(`${action} error:`, error);
+      toast.error(`Failed to ${action.toLowerCase()} package`, {
+        description: String(error),
+        id: toastId,
+      });
+    } finally {
+      setIsTogglingPackageName('');
+    }
+  };
+
+  const handlePullApk = async (pkg: PackageInfo) => {
+    setIsPullingPackageName(pkg.PackageName);
+    const toastId = toast.loading('Preparing to pull APK...', {
+      description: pkg.PackageName,
+    });
+
+    try {
+      const output = await PullApk(pkg.PackageName);
+      
+      if (output.includes("cancelled by user")) {
+        toast.info("Pull APK Cancelled", {
+          description: pkg.PackageName,
+          id: toastId,
+        });
+      } else {
+        toast.success("APK Pull Successful", {
+          description: output,
+          id: toastId,
+        });
+      }
+
+    } catch (error) {
+      console.error('Pull APK error:', error);
+      toast.error('Failed to pull APK', {
+        description: String(error),
+        id: toastId,
+      });
+    } finally {
+      setIsPullingPackageName('');
     }
   };
   
@@ -390,67 +463,109 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
           </div>
         </CardHeader>
         <CardContent className="p-0 flex-1 flex overflow-hidden min-h-0">
-          <ScrollArea className="flex-1 h-full">
-            <Table>
-              <TableHeader className="sticky top-0 bg-muted/50 backdrop-blur-sm">
-                <TableRow>
-                  <TableHead>Package Name</TableHead>
-                  <TableHead className="w-[100px] text-right">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoadingList ? (
+            <ScrollArea className="flex-1 h-full">
+              <Table>
+                <TableHeader className="sticky top-0 bg-muted/50 backdrop-blur-sm">
                   <TableRow>
-                    <TableCell colSpan={2} className="h-24 text-center">
-                      <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                    </TableCell>
+                    <TableHead className="w-[100px]">Status</TableHead>
+                    <TableHead>Package Name</TableHead>
+                    <TableHead className="w-[100px] text-right">
+                      Actions
+                    </TableHead>
                   </TableRow>
-                ) : packageList.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={2} className="h-24 text-center">
-                      No packages found for this filter.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  packageList.map((pkg) => (
-                    <TableRow
-                      key={pkg.PackageName}
-                      className="hover:bg-muted/50"
-                    >
-                      <TableCell className="font-mono">
-                        {pkg.PackageName}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setPkgToAction(pkg.PackageName);
-                                setIsClearDataOpen(true);
-                              }}
-                            >
-                              <Eraser className="mr-2 h-4 w-4" />
-                              Clear Data
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                </TableHeader>
+                <TableBody>
+                  {isLoadingList ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="h-24 text-center">
+                        <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        </CardContent>
-      </Card>
-    </div>
+                  ) : packageList.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="h-24 text-center">
+                        No packages found for this filter.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    packageList.map((pkg) => (
+                      <TableRow
+                        key={pkg.PackageName}
+                        className="hover:bg-muted/50"
+                        data-state={!pkg.IsEnabled ? 'disabled' : ''}
+                      >
+                        <TableCell>
+                          {pkg.IsEnabled ? (
+                            <span className="flex items-center text-emerald-500">
+                              <Eye className="mr-2 h-4 w-4" />
+                              Enabled
+                            </span>
+                          ) : (
+                            <span className="flex items-center text-muted-foreground">
+                              <EyeOff className="mr-2 h-4 w-4" />
+                              Disabled
+                            </span>
+                          )}
+                        </TableCell>
+                        
+                        <TableCell className="font-mono">
+                          {pkg.PackageName}
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          {isTogglingPackageName === pkg.PackageName ||
+                          isPullingPackageName === pkg.PackageName ? (
+                            <Loader2 className="h-4 w-4 animate-spin ml-auto" />
+                          ) : (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                
+                                <DropdownMenuItem
+                                  onClick={() => handleTogglePackage(pkg)}
+                                >
+                                  {pkg.IsEnabled ? (
+                                    <EyeOff className="mr-2 h-4 w-4" />
+                                  ) : (
+                                    <Eye className="mr-2 h-4 w-4" />
+                                  )}
+                                  {pkg.IsEnabled ? 'Disable' : 'Enable'}
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={() => handlePullApk(pkg)}
+                                >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Pull APK
+                                </DropdownMenuItem>
+                                
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setPkgToAction(pkg.PackageName);
+                                    setIsClearDataOpen(true);
+                                  }}
+                                >
+                                  <Eraser className="mr-2 h-4 w-4" />
+                                  Clear Data
+                                </DropdownMenuItem>
+                                
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 }

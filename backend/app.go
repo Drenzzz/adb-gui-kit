@@ -34,6 +34,7 @@ type FileEntry struct {
 
 type PackageInfo struct {
 	PackageName string
+	IsEnabled   bool
 }
 
 // App struct

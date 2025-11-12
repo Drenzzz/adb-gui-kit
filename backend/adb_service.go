@@ -239,40 +239,73 @@ func (a *App) UninstallPackage(packageName string) (string, error) {
 }
 
 func (a *App) ListPackages(filterType string) ([]PackageInfo, error) {
-	args := []string{"shell", "pm", "list", "packages"}
+	var filterFlag string
 	switch filterType {
 	case "user":
-		args = append(args, "-3")
+		filterFlag = "-3"
 	case "system":
-		args = append(args, "-s")
+		filterFlag = "-s"
 	case "all":
+		filterFlag = ""
 	default:
+		filterFlag = ""
 	}
 
-	output, err := a.runCommand("adb", args...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list packages: %w. Output: %s", err, output)
-	}
-
-	var packages []PackageInfo
-	
-	lines := strings.Split(output, "\n")
+	packageMap := make(map[string]PackageInfo)
 	prefix := "package:"
 
-	for _, line := range lines {
+	argsEnabled := []string{"shell", "pm", "list", "packages", "-e"}
+	if filterFlag != "" {
+		argsEnabled = append(argsEnabled, filterFlag)
+	}
+
+	outputEnabled, errEnabled := a.runCommand("adb", argsEnabled...)
+	if errEnabled != nil {
+		return nil, fmt.Errorf("failed to list enabled packages: %w", errEnabled)
+	}
+
+	linesEnabled := strings.Split(outputEnabled, "\n")
+	for _, line := range linesEnabled {
 		trimmedLine := strings.TrimSpace(line)
-		
 		if strings.HasPrefix(trimmedLine, prefix) {
 			packageName := strings.TrimPrefix(trimmedLine, prefix)
-			
-			packages = append(packages, PackageInfo{
+			packageMap[packageName] = PackageInfo{
 				PackageName: packageName,
-			})
+				IsEnabled:   true,
+			}
 		}
 	}
 
+	argsDisabled := []string{"shell", "pm", "list", "packages", "-d"}
+	if filterFlag != "" {
+		argsDisabled = append(argsDisabled, filterFlag)
+	}
+
+	outputDisabled, errDisabled := a.runCommand("adb", argsDisabled...)
+	if errDisabled != nil {
+		return nil, fmt.Errorf("failed to list disabled packages: %w", errDisabled)
+	}
+
+	linesDisabled := strings.Split(outputDisabled, "\n")
+	for _, line := range linesDisabled {
+		trimmedLine := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmedLine, prefix) {
+			packageName := strings.TrimPrefix(trimmedLine, prefix)
+			packageMap[packageName] = PackageInfo{
+				PackageName: packageName,
+				IsEnabled:   false,
+			}
+		}
+	}
+
+	var packages []PackageInfo
+	for _, pkg := range packageMap {
+		packages = append(packages, pkg)
+	}
+	
 	return packages, nil
 }
+
 
 func (a *App) ClearData(packageName string) (string, error) {
 	if packageName == "" {

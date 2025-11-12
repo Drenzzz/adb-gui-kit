@@ -109,3 +109,22 @@ func (a *App) SelectDirectoryToPush() (string, error) {
 	}
 	return selectedPath, nil
 }
+
+func (a *App) SelectSaveFile(defaultFilename string) (string, error) {
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultFilename,
+		Title:           "Save File As...",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "All Files (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return filePath, nil
+}

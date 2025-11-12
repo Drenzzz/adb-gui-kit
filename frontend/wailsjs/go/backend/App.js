@@ -114,6 +114,10 @@ export function SelectSaveDirectory(arg1) {
   return window['go']['backend']['App']['SelectSaveDirectory'](arg1);
 }
 
+export function SelectSaveFile(arg1) {
+  return window['go']['backend']['App']['SelectSaveFile'](arg1);
+}
+
 export function SelectZipFile() {
   return window['go']['backend']['App']['SelectZipFile']();
 }
