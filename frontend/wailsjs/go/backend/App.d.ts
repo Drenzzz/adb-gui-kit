@@ -6,7 +6,11 @@ export function ClearData(arg1:string):Promise<string>;
 
 export function ConnectWirelessAdb(arg1:string,arg2:string):Promise<string>;
 
+export function DisablePackage(arg1:string):Promise<string>;
+
 export function DisconnectWirelessAdb(arg1:string,arg2:string):Promise<string>;
+
+export function EnablePackage(arg1:string):Promise<string>;
 
 export function EnableWirelessAdb(arg1:string):Promise<string>;
 

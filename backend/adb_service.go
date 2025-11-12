@@ -292,6 +292,45 @@ func (a *App) ClearData(packageName string) (string, error) {
 	return "Data cleared successfully", nil
 }
 
+func (a *App) DisablePackage(packageName string) (string, error) {
+	if packageName == "" {
+		return "", fmt.Errorf("package name cannot be empty")
+	}
+
+	output, err := a.runCommand("adb", "shell", "pm", "disable", packageName)
+	if err != nil {
+		return "", fmt.Errorf("failed to run disable command for %s: %w", packageName, err)
+	}
+
+	if strings.Contains(output, "new state: disabled") {
+		return output, nil
+	}
+
+	if strings.Contains(output, "new state:") {
+		return output, nil
+	}
+	
+	return "", fmt.Errorf("failed to disable package %s: %s", packageName, output)
+}
+
+func (a *App) EnablePackage(packageName string) (string, error) {
+	if packageName == "" {
+		return "", fmt.Errorf("package name cannot be empty")
+	}
+
+	output, err := a.runCommand("adb", "shell", "pm", "enable", packageName)
+	if err != nil {
+		return "", fmt.Errorf("failed to run enable command for %s: %w", packageName, err)
+	}
+
+	if strings.Contains(output, "new state: enabled") {
+		return output, nil
+	}
+
+	return "", fmt.Errorf("failed to enable package %s: %s", packageName, output)
+}
+
+
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
 	output, err := a.runCommand("adb", "shell", "ls", "-lA", path)
 	if err != nil {

@@ -10,8 +10,16 @@ export function ConnectWirelessAdb(arg1, arg2) {
   return window['go']['backend']['App']['ConnectWirelessAdb'](arg1, arg2);
 }
 
+export function DisablePackage(arg1) {
+  return window['go']['backend']['App']['DisablePackage'](arg1);
+}
+
 export function DisconnectWirelessAdb(arg1, arg2) {
   return window['go']['backend']['App']['DisconnectWirelessAdb'](arg1, arg2);
+}
+
+export function EnablePackage(arg1) {
+  return window['go']['backend']['App']['EnablePackage'](arg1);
 }
 
 export function EnableWirelessAdb(arg1) {
