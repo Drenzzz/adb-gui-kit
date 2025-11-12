@@ -62,6 +62,10 @@ export function ListPackages(arg1) {
   return window['go']['backend']['App']['ListPackages'](arg1);
 }
 
+export function PullApk(arg1) {
+  return window['go']['backend']['App']['PullApk'](arg1);
+}
+
 export function PullFile(arg1, arg2) {
   return window['go']['backend']['App']['PullFile'](arg1, arg2);
 }

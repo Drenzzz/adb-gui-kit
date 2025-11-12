@@ -32,6 +32,8 @@ export function ListFiles(arg1:string):Promise<Array<backend.FileEntry>>;
 
 export function ListPackages(arg1:string):Promise<Array<backend.PackageInfo>>;
 
+export function PullApk(arg1:string):Promise<string>;
+
 export function PullFile(arg1:string,arg2:string):Promise<string>;
 
 export function PushFile(arg1:string,arg2:string):Promise<string>;

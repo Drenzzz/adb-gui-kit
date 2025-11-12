@@ -330,6 +330,45 @@ func (a *App) EnablePackage(packageName string) (string, error) {
 	return "", fmt.Errorf("failed to enable package %s: %s", packageName, output)
 }
 
+func (a *App) PullApk(packageName string) (string, error) {
+	if packageName == "" {
+		return "", fmt.Errorf("package name cannot be empty")
+	}
+
+	pathOutput, err := a.runCommand("adb", "shell", "pm", "path", packageName)
+	if err != nil {
+		return "", fmt.Errorf("failed to find package path for %s: %w", packageName, err)
+	}
+
+	if pathOutput == "" {
+		return "", fmt.Errorf("package %s not found or no path returned", packageName)
+	}
+
+	remotePath := strings.TrimPrefix(pathOutput, "package:")
+	remotePath = strings.TrimSpace(remotePath)
+
+	if remotePath == "" {
+		return "", fmt.Errorf("could not parse remote path from output: %s", pathOutput)
+	}
+
+	defaultFilename := packageName + ".apk"
+
+	localPath, err := a.SelectSaveFile(defaultFilename)
+	if err != nil {
+		return "", fmt.Errorf("save file dialog failed: %w", err)
+	}
+
+	if localPath == "" {
+		return "APK pull cancelled by user", nil
+	}
+
+	output, err := a.runCommand("adb", "pull", remotePath, localPath)
+	if err != nil {
+		return "", fmt.Errorf("adb pull failed: %w. Output: %s", err, output)
+	}
+
+	return fmt.Sprintf("APK saved to %s", localPath), nil
+}
 
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
 	output, err := a.runCommand("adb", "shell", "ls", "-lA", path)
