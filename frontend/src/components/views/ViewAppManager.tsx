@@ -5,6 +5,7 @@ import {
   InstallPackage,
   UninstallPackage,
   ListPackages,
+  ClearData,
 } from '../../../wailsjs/go/backend/App';
 import { backend } from '../../../wailsjs/go/models';
 
@@ -28,6 +29,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import {
   Loader2,
@@ -36,6 +43,9 @@ import {
   FileUp,
   RefreshCw,
   List,
+  MoreHorizontal,
+  Eraser,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Table,
@@ -60,6 +70,10 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
   const [packageList, setPackageList] = useState<PackageInfo[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [filter, setFilter] = useState<FilterType>('user');
+
+  const [isClearing, setIsClearing] = useState(false);
+  const [pkgToAction, setPkgToAction] = useState<string>('');
+  const [isClearDataOpen, setIsClearDataOpen] = useState(false);
 
   const loadPackages = async (currentFilter: FilterType) => {
     setIsLoadingList(true);
@@ -160,7 +174,63 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
     }
   };
 
+  const handleClearData = async () => {
+    if (!pkgToAction) return;
+
+    setIsClearing(true);
+    const toastId = toast.loading('Clearing data...', {
+      description: pkgToAction,
+    });
+
+    try {
+      const output = await ClearData(pkgToAction);
+      toast.success('Data Clear Successful', {
+        description: output,
+        id: toastId,
+      });
+    } catch (error) {
+      console.error('Clear data error:', error);
+      toast.error('Clear Data Failed', {
+        description: String(error),
+        id: toastId,
+      });
+    } finally {
+      setIsClearing(false);
+      setIsClearDataOpen(false);
+      setPkgToAction('');
+    }
+  };
+  
   return (
+    <>
+      <AlertDialog open={isClearDataOpen} onOpenChange={setIsClearDataOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to clear data?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will erase all app data (logins, files, settings) for{' '}
+              <span className="font-semibold text-foreground">{pkgToAction}</span>
+              . This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: 'destructive' })}
+              onClick={handleClearData}
+              disabled={isClearing}
+            >
+              {isClearing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Eraser className="mr-2 h-4 w-4" />
+              )}
+              Yes, Clear Data
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
@@ -203,7 +273,6 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
           </CardContent>
         </Card>
 
-        {/* --- [KODE LAMA] Kartu Uninstall Package --- */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -240,15 +309,15 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Anda akan menghapus paket:{' '}
+                    You will delete the package:{' '}
                     <span className="font-semibold text-foreground">
                       {packageName}
                     </span>
                     .
                     <br />
-                    Tindakan ini tidak dapat dibatalkan.
+                    This action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -263,7 +332,7 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                     ) : (
                       <Trash2 className="mr-2 h-4 w-4" />
                     )}
-                    Ya, Uninstall
+                    Yes, Uninstall
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -272,7 +341,6 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
         </Card>
       </div>
 
-      {/* --- [KODE BARU] Kartu untuk Daftar Paket --- */}
       <Card className="flex-1 flex flex-col overflow-hidden min-h-[400px]">
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex-1">
@@ -285,7 +353,6 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {/* Tombol Filter */}
             <Button
               variant={filter === 'user' ? 'default' : 'outline'}
               size="sm"
@@ -308,7 +375,6 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
               All
             </Button>
 
-            {/* Tombol Refresh */}
             <Button
               variant="ghost"
               size="icon"
@@ -329,19 +395,21 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
               <TableHeader className="sticky top-0 bg-muted/50 backdrop-blur-sm">
                 <TableRow>
                   <TableHead>Package Name</TableHead>
-                  {/* Di commit selanjutnya kita akan tambahkan kolom 'Actions' di sini */}
+                  <TableHead className="w-[100px] text-right">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoadingList ? (
                   <TableRow>
-                    <TableCell colSpan={1} className="h-24 text-center">
+                    <TableCell colSpan={2} className="h-24 text-center">
                       <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : packageList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={1} className="h-24 text-center">
+                    <TableCell colSpan={2} className="h-24 text-center">
                       No packages found for this filter.
                     </TableCell>
                   </TableRow>
@@ -349,10 +417,30 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                   packageList.map((pkg) => (
                     <TableRow
                       key={pkg.PackageName}
-                      className="cursor-pointer hover:bg-muted/50"
+                      className="hover:bg-muted/50"
                     >
                       <TableCell className="font-mono">
                         {pkg.PackageName}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setPkgToAction(pkg.PackageName);
+                                setIsClearDataOpen(true);
+                              }}
+                            >
+                              <Eraser className="mr-2 h-4 w-4" />
+                              Clear Data
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -363,5 +451,6 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
