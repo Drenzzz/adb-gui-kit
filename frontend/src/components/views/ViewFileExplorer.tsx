@@ -33,6 +33,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -89,6 +90,8 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
+  const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
+
   useEffect(() => {
     if (isRenameOpen && selectedFile) {
       setNewName(selectedFile.Name);
@@ -106,6 +109,7 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
   const loadFiles = async (path: string) => {
     setIsLoading(true);
     setSelectedFile(null);
+    setSelectedFileNames([]);
     try {
       const files = await ListFiles(path);
       if (!files) {
@@ -355,6 +359,24 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
     }
   };
 
+  const handleSelectFile = (fileName: string, checked: boolean) => {
+    if (checked) {
+      setSelectedFileNames((prev) => [...prev, fileName]);
+    } else {
+      setSelectedFileNames((prev) =>
+        prev.filter((name) => name !== fileName)
+      );
+    }
+  };
+
+  const handleSelectAllFiles = (checked: boolean) => {
+    if (checked) {
+      setSelectedFileNames(fileList.map((file) => file.Name));
+    } else {
+      setSelectedFileNames([]);
+    }
+  };
+
   const isBusy =
     isLoading ||
     isPushingFile ||
@@ -577,6 +599,18 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
               <Table>
                 <TableHeader className="sticky top-0 bg-muted/50 backdrop-blur-sm">
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={
+                          fileList.length > 0 &&
+                          selectedFileNames.length === fileList.length
+                        }
+                        onCheckedChange={(checked) =>
+                          handleSelectAllFiles(checked as boolean)
+                        }
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Size</TableHead>
@@ -587,13 +621,13 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
+                      <TableCell colSpan={6} className="h-24 text-center">
                         <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : fileList.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
+                      <TableCell colSpan={6} className="h-24 text-center">
                         This directory is empty.
                       </TableCell>
                     </TableRow>
@@ -604,10 +638,27 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
                         onDoubleClick={() => handleRowDoubleClick(file)}
                         onClick={() => handleRowClick(file)}
                         data-state={
-                          selectedFile?.Name === file.Name ? 'selected' : ''
+                          selectedFile?.Name === file.Name ||
+                          selectedFileNames.includes(file.Name)
+                            ? 'selected'
+                            : ''
                         }
                         className="cursor-pointer"
                       >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedFileNames.includes(file.Name)}
+                            onCheckedChange={(checked) =>
+                              handleSelectFile(
+                                file.Name,
+                                checked as boolean
+                              )
+                            }
+                            onClick={(e) => e.stopPropagation()} 
+                            aria-label="Select row"
+                          />
+                        </TableCell>
+                        
                         <TableCell>
                           {file.Type === 'Directory' ? (
                             <Folder className="h-4 w-4 text-blue-500" />

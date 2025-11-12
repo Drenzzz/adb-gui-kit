@@ -38,6 +38,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import {
   Loader2,
@@ -82,6 +83,8 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
 
   const [isTogglingPackageName, setIsTogglingPackageName] = useState<string>('');
   const [isPullingPackageName, setIsPullingPackageName] = useState<string>('');
+
+  const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
 
   const loadPackages = async (currentFilter: FilterType) => {
     setIsLoadingList(true);
@@ -273,6 +276,24 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
       setIsPullingPackageName('');
     }
   };
+
+  const handleSelectPackage = (packageName: string, checked: boolean) => {
+    if (checked) {
+      setSelectedPackages((prev) => [...prev, packageName]);
+    } else {
+      setSelectedPackages((prev) =>
+        prev.filter((name) => name !== packageName)
+      );
+    }
+  };
+
+  const handleSelectAllPackages = (checked: boolean) => {
+    if (checked) {
+      setSelectedPackages(packageList.map((pkg) => pkg.PackageName));
+    } else {
+      setSelectedPackages([]);
+    }
+  };
   
   return (
     <>
@@ -462,11 +483,24 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="p-0 flex-1 flex overflow-hidden min-h-0">
+
+          <CardContent className="p-0 flex-1 flex overflow-hidden min-h-0">
             <ScrollArea className="flex-1 h-full">
               <Table>
                 <TableHeader className="sticky top-0 bg-muted/50 backdrop-blur-sm">
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={
+                          packageList.length > 0 &&
+                          selectedPackages.length === packageList.length
+                        }
+                        onCheckedChange={(checked) =>
+                          handleSelectAllPackages(checked as boolean)
+                        }
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead className="w-[100px]">Status</TableHead>
                     <TableHead>Package Name</TableHead>
                     <TableHead className="w-[100px] text-right">
@@ -477,13 +511,13 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                 <TableBody>
                   {isLoadingList ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="h-24 text-center">
+                      <TableCell colSpan={4} className="h-24 text-center">
                         <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                       </TableCell>
                     </TableRow>
                   ) : packageList.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="h-24 text-center">
+                      <TableCell colSpan={4} className="h-24 text-center">
                         No packages found for this filter.
                       </TableCell>
                     </TableRow>
@@ -491,9 +525,30 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                     packageList.map((pkg) => (
                       <TableRow
                         key={pkg.PackageName}
+                        data-state={
+                          selectedPackages.includes(pkg.PackageName)
+                            ? 'selected'
+                            : !pkg.IsEnabled
+                            ? 'disabled'
+                            : ''
+                        }
                         className="hover:bg-muted/50"
-                        data-state={!pkg.IsEnabled ? 'disabled' : ''}
                       >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedPackages.includes(
+                              pkg.PackageName
+                            )}
+                            onCheckedChange={(checked) =>
+                              handleSelectPackage(
+                                pkg.PackageName,
+                                checked as boolean
+                              )
+                            }
+                            aria-label="Select row"
+                          />
+                        </TableCell>
+                        
                         <TableCell>
                           {pkg.IsEnabled ? (
                             <span className="flex items-center text-emerald-500">
