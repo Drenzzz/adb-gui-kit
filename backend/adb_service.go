@@ -510,6 +510,51 @@ func (a *App) PullFile(remotePath string, localPath string) (string, error) {
 	return output, nil
 }
 
+func (a *App) CreateFolder(fullPath string) (string, error) {
+	if fullPath == "" {
+		return "", fmt.Errorf("path cannot be empty")
+	}
+
+	command := fmt.Sprintf("mkdir -p '%s'", fullPath)
+
+	output, err := a.runShellCommand(command)
+	if err != nil {
+		return "", fmt.Errorf("failed to create folder %s: %w. Output: %s", fullPath, err, output)
+	}
+
+	return fmt.Sprintf("Folder created: %s", fullPath), nil
+}
+
+func (a *App) DeleteFile(fullPath string) (string, error) {
+	if fullPath == "" {
+		return "", fmt.Errorf("path cannot be empty")
+	}
+
+	command := fmt.Sprintf("rm -rf '%s'", fullPath)
+
+	output, err := a.runShellCommand(command)
+	if err != nil {
+		return "", fmt.Errorf("failed to delete %s: %w. Output: %s", fullPath, err, output)
+	}
+
+	return fmt.Sprintf("Deleted: %s", fullPath), nil
+}
+
+func (a *App) RenameFile(oldPath string, newPath string) (string, error) {
+	if oldPath == "" || newPath == "" {
+		return "", fmt.Errorf("old and new paths cannot be empty")
+	}
+
+	command := fmt.Sprintf("mv '%s' '%s'", oldPath, newPath)
+
+	output, err := a.runShellCommand(command)
+	if err != nil {
+		return "", fmt.Errorf("failed to rename %s to %s: %w. Output: %s", oldPath, newPath, err, output)
+	}
+
+	return fmt.Sprintf("Renamed %s to %s", oldPath, newPath), nil
+}
+
 func (a *App) SideloadPackage(filePath string) (string, error) {
 	filePath = strings.TrimSpace(filePath)
 	if filePath == "" {

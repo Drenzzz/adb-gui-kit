@@ -6,6 +6,10 @@ export function ClearData(arg1:string):Promise<string>;
 
 export function ConnectWirelessAdb(arg1:string,arg2:string):Promise<string>;
 
+export function CreateFolder(arg1:string):Promise<string>;
+
+export function DeleteFile(arg1:string):Promise<string>;
+
 export function DisablePackage(arg1:string):Promise<string>;
 
 export function DisconnectWirelessAdb(arg1:string,arg2:string):Promise<string>;
@@ -39,6 +43,8 @@ export function PullFile(arg1:string,arg2:string):Promise<string>;
 export function PushFile(arg1:string,arg2:string):Promise<string>;
 
 export function Reboot(arg1:string):Promise<void>;
+
+export function RenameFile(arg1:string,arg2:string):Promise<string>;
 
 export function RunAdbHostCommand(arg1:string):Promise<string>;
 

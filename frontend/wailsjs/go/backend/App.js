@@ -10,6 +10,14 @@ export function ConnectWirelessAdb(arg1, arg2) {
   return window['go']['backend']['App']['ConnectWirelessAdb'](arg1, arg2);
 }
 
+export function CreateFolder(arg1) {
+  return window['go']['backend']['App']['CreateFolder'](arg1);
+}
+
+export function DeleteFile(arg1) {
+  return window['go']['backend']['App']['DeleteFile'](arg1);
+}
+
 export function DisablePackage(arg1) {
   return window['go']['backend']['App']['DisablePackage'](arg1);
 }
@@ -76,6 +84,10 @@ export function PushFile(arg1, arg2) {
 
 export function Reboot(arg1) {
   return window['go']['backend']['App']['Reboot'](arg1);
+}
+
+export function RenameFile(arg1, arg2) {
+  return window['go']['backend']['App']['RenameFile'](arg1, arg2);
 }
 
 export function RunAdbHostCommand(arg1) {
