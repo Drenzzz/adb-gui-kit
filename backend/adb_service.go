@@ -274,6 +274,23 @@ func (a *App) ListPackages(filterType string) ([]PackageInfo, error) {
 	return packages, nil
 }
 
+func (a *App) ClearData(packageName string) (string, error) {
+	if packageName == "" {
+		return "", fmt.Errorf("package name cannot be empty")
+	}
+
+	output, err := a.runCommand("adb", "shell", "pm", "clear", packageName)
+
+	if err != nil {
+		return "", fmt.Errorf("failed to run clear data command for %s: %w", packageName, err)
+	}
+
+	if strings.Contains(output, "Failed") {
+		return "", fmt.Errorf("failed to clear data for %s: %s", packageName, output)
+	}
+
+	return "Data cleared successfully", nil
+}
 
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
 	output, err := a.runCommand("adb", "shell", "ls", "-lA", path)
