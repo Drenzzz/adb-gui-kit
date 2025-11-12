@@ -330,7 +330,8 @@ func (a *App) DisablePackage(packageName string) (string, error) {
 		return "", fmt.Errorf("package name cannot be empty")
 	}
 
-	output, err := a.runCommand("adb", "shell", "pm", "disable", packageName)
+	// pm disable requires a component name. disable-user targets the whole package for user 0 without root.
+	output, err := a.runCommand("adb", "shell", "pm", "disable-user", "--user", "0", packageName)
 	if err != nil {
 		return "", fmt.Errorf("failed to run disable command for %s: %w", packageName, err)
 	}
@@ -351,7 +352,7 @@ func (a *App) EnablePackage(packageName string) (string, error) {
 		return "", fmt.Errorf("package name cannot be empty")
 	}
 
-	output, err := a.runCommand("adb", "shell", "pm", "enable", packageName)
+	output, err := a.runCommand("adb", "shell", "pm", "enable", "--user", "0", packageName)
 	if err != nil {
 		return "", fmt.Errorf("failed to run enable command for %s: %w", packageName, err)
 	}
