@@ -68,7 +68,7 @@ const NAV_ITEMS = [
 
 export function MainLayout() {
   const [activeView, setActiveView] = useState<ViewType>(VIEWS.DASHBOARD);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [shellHistory, setShellHistory] = useState<HistoryEntry[]>([]);
