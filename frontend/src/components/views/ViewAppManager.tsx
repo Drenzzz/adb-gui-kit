@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   SelectApkFile,
   InstallPackage,
-  UninstallPackage,
   ListPackages,
   ClearData,
   DisablePackage,
@@ -74,8 +73,6 @@ type PackageInfo = backend.PackageInfo;
 export function ViewAppManager({ activeView }: { activeView: string }) {
   const [apkPath, setApkPath] = useState('');
   const [isInstalling, setIsInstalling] = useState(false);
-  const [packageName, setPackageName] = useState('');
-  const [isUninstalling, setIsUninstalling] = useState(false);
 
   const [packageList, setPackageList] = useState<PackageInfo[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
@@ -167,36 +164,6 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
       });
     } finally {
       setIsInstalling(false);
-    }
-  };
-
-  const handleUninstall = async () => {
-    if (!packageName) {
-      toast.error('Package name cannot be empty.');
-      return;
-    }
-
-    setIsUninstalling(true);
-    const toastId = toast.loading('Uninstalling package...', {
-      description: packageName,
-    });
-
-    try {
-      const output = await UninstallPackage(packageName);
-      toast.success('Uninstall Complete', {
-        description: output,
-        id: toastId,
-      });
-      setPackageName('');
-      loadPackages(filter);
-    } catch (error) {
-      console.error('Uninstall error:', error);
-      toast.error('Uninstall Failed', {
-        description: String(error),
-        id: toastId,
-      });
-    } finally {
-      setIsUninstalling(false);
     }
   };
 
@@ -576,8 +543,7 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
 
       <div className="flex flex-col gap-6">
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
+        <div className="grid grid-cols-1 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -615,73 +581,6 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                 )}
                 Install
               </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trash2 />
-                Uninstall Package (by Name)
-              </CardTitle>
-              <CardDescription>
-                Manually enter a package name to uninstall it.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="package-name" className="text-sm font-medium">
-                  Package Name
-                </label>
-                <Input
-                  id="package-name"
-                  placeholder="e.g., com.example.app"
-                  value={packageName}
-                  onChange={(e) => setPackageName(e.target.value)}
-                  disabled={isUninstalling}
-                />
-              </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    disabled={isUninstalling || !packageName}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Uninstall
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Anda akan menghapus paket:{' '}
-                      <span className="font-semibold text-foreground">
-                        {packageName}
-                      </span>
-                      .
-                      <br />
-                      Tindakan ini tidak dapat dibatalkan.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Batal</AlertDialogCancel>
-                    <AlertDialogAction
-                      className={buttonVariants({ variant: 'destructive' })}
-                      onClick={handleUninstall}
-                      disabled={isUninstalling}
-                    >
-                      {isUninstalling ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="mr-2 h-4 w-4" />
-                      )}
-                      Ya, Uninstall
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </CardContent>
           </Card>
         </div>
