@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 import {
   SelectApkFile,
@@ -68,6 +68,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 type FilterType = 'user' | 'system' | 'all';
+type StatusFilter = 'all' | 'enabled' | 'disabled';
 type PackageInfo = backend.PackageInfo;
 
 export function ViewAppManager({ activeView }: { activeView: string }) {
@@ -79,6 +80,9 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
   const [packageList, setPackageList] = useState<PackageInfo[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [filter, setFilter] = useState<FilterType>('user');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [isClearing, setIsClearing] = useState(false);
   const [pkgToAction, setPkgToAction] = useState<string>('');
@@ -290,7 +294,9 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
 
   const handleSelectPackage = (packageName: string, checked: boolean) => {
     if (checked) {
-      setSelectedPackages((prev) => [...prev, packageName]);
+      setSelectedPackages((prev) =>
+        prev.includes(packageName) ? prev : [...prev, packageName]
+      );
     } else {
       setSelectedPackages((prev) =>
         prev.filter((name) => name !== packageName)
@@ -298,11 +304,27 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
     }
   };
 
-  const handleSelectAllPackages = (checked: boolean) => {
+  const handleSelectAllPackages = (
+    checked: boolean,
+    targetList: PackageInfo[] = packageList
+  ) => {
+    const targetNames = targetList.map((pkg) => pkg.PackageName);
+    const targetSet = new Set(targetNames);
+
+    if (targetNames.length === 0) {
+      return;
+    }
+
     if (checked) {
-      setSelectedPackages(packageList.map((pkg) => pkg.PackageName));
+      setSelectedPackages((prev) => {
+        const merged = new Set(prev);
+        targetSet.forEach((name) => merged.add(name));
+        return Array.from(merged);
+      });
     } else {
-      setSelectedPackages([]);
+      setSelectedPackages((prev) =>
+        prev.filter((name) => !targetSet.has(name))
+      );
     }
   };
 
@@ -389,6 +411,29 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
       setIsBatchEnablingOpen(false);
     }
   };
+
+  const visiblePackages = useMemo(() => {
+    const lowerSearch = searchTerm.trim().toLowerCase();
+    return packageList
+      .filter((pkg) => {
+        if (!lowerSearch) return true;
+        return pkg.PackageName.toLowerCase().includes(lowerSearch);
+      })
+      .filter((pkg) => {
+        if (statusFilter === 'enabled') return pkg.IsEnabled;
+        if (statusFilter === 'disabled') return !pkg.IsEnabled;
+        return true;
+      })
+      .sort((a, b) => {
+        return sortOrder === 'asc'
+          ? a.PackageName.localeCompare(b.PackageName)
+          : b.PackageName.localeCompare(a.PackageName);
+      });
+  }, [packageList, searchTerm, statusFilter, sortOrder]);
+
+  const allVisibleSelected =
+    visiblePackages.length > 0 &&
+    visiblePackages.every((pkg) => selectedPackages.includes(pkg.PackageName));
 
   const isBusy = isLoadingList || isBatchUninstalling || isBatchDisabling || isBatchEnabling;
   
@@ -642,79 +687,121 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
         </div>
 
         <Card className="flex-1 flex flex-col overflow-hidden min-h-[400px]">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex-1">
-              <CardTitle className="flex items-center gap-2">
-                <List />
-                Installed Packages
-              </CardTitle>
-              <CardDescription>
-                List of applications installed on the device.
-              </CardDescription>
+          <CardHeader className="space-y-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div className="flex-1">
+                <CardTitle className="flex items-center gap-2">
+                  <List />
+                  Installed Packages
+                </CardTitle>
+                <CardDescription>
+                  List of applications installed on the device.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <Button
+                  variant={filter === 'user' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter('user')}
+                >
+                  User
+                </Button>
+                <Button
+                  variant={filter === 'system' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter('system')}
+                >
+                  System
+                </Button>
+                <Button
+                  variant={filter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFilter('all')}
+                >
+                  All
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => loadPackages(filter)}
+                  disabled={isBusy}
+                  aria-label="Refresh packages"
+                >
+                  {isBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
-              {/* Grup Filter */}
-              <Button
-                variant={filter === 'user' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('user')}
-              >
-                User
-              </Button>
-              <Button
-                variant={filter === 'system' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('system')}
-              >
-                System
-              </Button>
-              <Button
-                variant={filter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('all')}
-              >
-                All
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => loadPackages(filter)}
-                disabled={isBusy}
-              >
-                {isBusy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={selectedPackages.length === 0 || isBusy}
-                onClick={() => setIsBatchEnablingOpen(true)}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Enable ({selectedPackages.length})
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={selectedPackages.length === 0 || isBusy}
-                onClick={() => setIsBatchDisablingOpen(true)}
-              >
-                <EyeOff className="mr-2 h-4 w-4" />
-                Disable ({selectedPackages.length})
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={selectedPackages.length === 0 || isBusy}
-                onClick={() => setIsBatchUninstallOpen(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Uninstall ({selectedPackages.length})
-              </Button>
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  placeholder="Search package name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full sm:w-48"
+                />
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                  className="h-9 min-w-[140px] rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="asc">Name (A-Z)</option>
+                  <option value="desc">Name (Z-A)</option>
+                </select>
+                <Button
+                  variant={statusFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('all')}
+                >
+                  All Status
+                </Button>
+                <Button
+                  variant={statusFilter === 'enabled' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('enabled')}
+                >
+                  Enabled
+                </Button>
+                <Button
+                  variant={statusFilter === 'disabled' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('disabled')}
+                >
+                  Disabled
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={selectedPackages.length === 0 || isBusy}
+                  onClick={() => setIsBatchEnablingOpen(true)}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Enable ({selectedPackages.length})
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={selectedPackages.length === 0 || isBusy}
+                  onClick={() => setIsBatchDisablingOpen(true)}
+                >
+                  <EyeOff className="mr-2 h-4 w-4" />
+                  Disable ({selectedPackages.length})
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={selectedPackages.length === 0 || isBusy}
+                  onClick={() => setIsBatchUninstallOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Uninstall ({selectedPackages.length})
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-0 flex-1 flex overflow-hidden min-h-0">
@@ -724,12 +811,12 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                   <TableRow>
                     <TableHead className="w-[50px]">
                       <Checkbox
-                        checked={
-                          packageList.length > 0 &&
-                          selectedPackages.length === packageList.length
-                        }
+                        checked={allVisibleSelected}
                         onCheckedChange={(checked) =>
-                          handleSelectAllPackages(checked as boolean)
+                          handleSelectAllPackages(
+                            checked as boolean,
+                            visiblePackages
+                          )
                         }
                         aria-label="Select all"
                       />
@@ -748,14 +835,14 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                         <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                       </TableCell>
                     </TableRow>
-                  ) : packageList.length === 0 ? (
+                  ) : visiblePackages.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="h-24 text-center">
-                        No packages found for this filter.
+                        No packages match your filters.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    packageList.map((pkg) => (
+                    visiblePackages.map((pkg) => (
                       <TableRow
                         key={pkg.PackageName}
                         data-state={
