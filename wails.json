@@ -18,5 +18,21 @@
     "fileVersion": "1.1.0",
     "copyright": "Copyright (c) 2025 Drenzzz",
     "comments": ""
+  },
+  "linux": {
+    "packagemetadata": {
+      "name": "ADBKit",
+      "description": "A simple, modern GUI for ADB and Fastboot.",
+      "packagename": "ADBKit",
+      "version": "1.1.0",
+      "maintainer": "Drenzzz <realdrenzzz@gmail.com>",
+      "depends": [
+        "libgtk-3-0",
+        "libwebkit2gtk-4.0-37"
+      ]
+    },
+    "resources": [
+      "bin/"
+    ]
   }
 }
