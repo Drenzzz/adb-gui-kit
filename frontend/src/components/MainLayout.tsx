@@ -157,12 +157,17 @@ export function MainLayout() {
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="relative flex flex-col bg-gradient-to-b from-muted/50 via-muted/30 to-background border-r border-border/50 backdrop-blur-xl"
           >
-            <div className="relative h-20 flex items-center px-3 border-b border-border/50 gap-3 justify-between">
+            <div
+              className={cn(
+                "relative h-20 flex items-center border-b border-border/50 gap-3",
+                isCollapsed ? "px-0 justify-center" : "pl-6 pr-4 justify-between"
+              )}
+            >
               <motion.div 
-                className="flex items-center gap-3"
+                className={cn("flex items-center gap-3", !isCollapsed && "w-full")}
                 animate={{ justifyContent: isCollapsed ? "center" : "flex-start" }}
               >
-                <div className="relative">
+                <div className={cn("relative", isCollapsed && "mx-auto")}>
                   <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
                   <img
                     src="/logo.png"
