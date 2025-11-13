@@ -134,6 +134,14 @@ export function SelectFileToPush() {
   return window['go']['backend']['App']['SelectFileToPush']();
 }
 
+export function SelectFilesToPush() {
+  return window['go']['backend']['App']['SelectFilesToPush']();
+}
+
+export function SelectFoldersToPush() {
+  return window['go']['backend']['App']['SelectFoldersToPush']();
+}
+
 export function SelectImageFile() {
   return window['go']['backend']['App']['SelectImageFile']();
 }

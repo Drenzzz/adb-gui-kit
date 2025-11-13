@@ -68,6 +68,10 @@ export function SelectDirectoryToPush():Promise<string>;
 
 export function SelectFileToPush():Promise<string>;
 
+export function SelectFilesToPush():Promise<Array<string>>;
+
+export function SelectFoldersToPush():Promise<Array<string>>;
+
 export function SelectImageFile():Promise<string>;
 
 export function SelectSaveDirectory(arg1:string):Promise<string>;

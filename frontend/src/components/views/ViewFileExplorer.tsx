@@ -5,15 +5,15 @@ import {
   ListFiles,
   PushFile,
   PullFile,
-  SelectFileToPush,
   SelectSaveDirectory,
   SelectDirectoryForPull,
-  SelectDirectoryToPush,
   DeleteFile,
   CreateFolder,
   RenameFile,
   DeleteMultipleFiles,
   PullMultipleFiles,
+  SelectFilesToPush,
+  SelectFoldersToPush,
 } from '../../../wailsjs/go/backend/App';
 import { backend } from '../../../wailsjs/go/models';
 
@@ -153,27 +153,85 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
     loadFiles(newPath);
   };
 
+  type BatchFailure = {
+    name: string;
+    error: string;
+  };
+
+  const getBasename = (fullPath: string) =>
+    fullPath.replace(/\\/g, '/').split('/').pop() || fullPath;
+
+  const showBatchToast = (
+    toastId: string | number,
+    entityLabel: string,
+    total: number,
+    failures: BatchFailure[]
+  ) => {
+    if (total === 0) {
+      return;
+    }
+
+    if (failures.length === 0) {
+      toast.success(
+        `Imported ${total} ${entityLabel}${total > 1 ? 's' : ''}`,
+        { id: toastId }
+      );
+      return;
+    }
+
+    const description = failures
+      .slice(0, 5)
+      .map((item) => `${item.name}: ${item.error}`)
+      .join('\n');
+
+    const successCount = total - failures.length;
+    const title =
+      failures.length === total
+        ? `Failed to import ${entityLabel}${total > 1 ? 's' : ''}`
+        : `Imported ${successCount}/${total} ${entityLabel}${
+            successCount === 1 ? '' : 's'
+          }`;
+
+    toast.error(title, {
+      id: toastId,
+      description,
+      duration: 8000,
+    });
+  };
+
   const handlePushFile = async () => {
     setIsPushingFile(true);
-    let toastId: string | number = '';
+    let toastId: string | number | undefined;
     try {
-      const localPath = await SelectFileToPush();
-      if (!localPath) {
-        setIsPushingFile(false);
+      const localPaths = await SelectFilesToPush();
+      if (!localPaths || localPaths.length === 0) {
         return;
       }
-      const fileName =
-        localPath.replace(/\\/g, '/').split('/').pop() ||
-        path.basename(localPath);
-      const remotePath = path.posix.join(currentPath, fileName);
-      toastId = toast.loading(`Pushing ${fileName}...`, {
-        description: `To: ${remotePath}`,
-      });
-      const output = await PushFile(localPath, remotePath);
-      toast.success('File Import Complete', {
-        description: output,
-        id: toastId,
-      });
+
+      const description =
+        localPaths.length === 1
+          ? `To: ${path.posix.join(currentPath, getBasename(localPaths[0]))}`
+          : undefined;
+      toastId = toast.loading(
+        localPaths.length === 1
+          ? `Pushing ${getBasename(localPaths[0])}...`
+          : `Pushing ${localPaths.length} files...`,
+        { description }
+      );
+
+      const failures: BatchFailure[] = [];
+      for (const localPath of localPaths) {
+        const fileName = getBasename(localPath);
+        const remotePath = path.posix.join(currentPath, fileName);
+        try {
+          await PushFile(localPath, remotePath);
+        } catch (error) {
+          console.error('Import file error:', error);
+          failures.push({ name: fileName, error: String(error) });
+        }
+      }
+
+      showBatchToast(toastId, 'file', localPaths.length, failures);
       loadFiles(currentPath);
     } catch (error) {
       console.error('Import file error:', error);
@@ -192,25 +250,35 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
 
   const handlePushFolder = async () => {
     setIsPushingFolder(true);
-    let toastId: string | number = '';
+    let toastId: string | number | undefined;
     try {
-      const localFolderPath = await SelectDirectoryToPush();
-      if (!localFolderPath) {
-        setIsPushingFolder(false);
+      const localFolders = await SelectFoldersToPush();
+      if (!localFolders || localFolders.length === 0) {
         return;
       }
-      const remotePath = currentPath;
-      const folderName =
-        localFolderPath.replace(/\\/g, '/').split('/').pop() ||
-        path.basename(localFolderPath);
-      toastId = toast.loading(`Pushing folder ${folderName}...`, {
-        description: `To: ${remotePath}`,
-      });
-      const output = await PushFile(localFolderPath, remotePath);
-      toast.success('Folder Import Complete', {
-        description: output,
-        id: toastId,
-      });
+
+      toastId = toast.loading(
+        localFolders.length === 1
+          ? `Pushing folder ${getBasename(localFolders[0])}...`
+          : `Pushing ${localFolders.length} folders...`,
+        {
+          description:
+            localFolders.length === 1 ? `To: ${currentPath}` : undefined,
+        }
+      );
+
+      const failures: BatchFailure[] = [];
+      for (const localFolderPath of localFolders) {
+        const folderName = getBasename(localFolderPath);
+        try {
+          await PushFile(localFolderPath, currentPath);
+        } catch (error) {
+          console.error('Import folder error:', error);
+          failures.push({ name: folderName, error: String(error) });
+        }
+      }
+
+      showBatchToast(toastId, 'folder', localFolders.length, failures);
       loadFiles(currentPath);
     } catch (error) {
       console.error('Import folder error:', error);
@@ -220,10 +288,13 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
           id: toastId,
         });
       } else {
-        toast.error('Folder Import Failed', { description: String(error) });
+        toast.error('Folder Import Failed', {
+          description: String(error),
+        });
       }
+    } finally {
+      setIsPushingFolder(false);
     }
-    setIsPushingFolder(false);
   };
 
   const handleMultiExport = async () => {
