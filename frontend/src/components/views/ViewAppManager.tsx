@@ -10,6 +10,8 @@ import {
   EnablePackage,
   PullApk,
   UninstallMultiplePackages,
+  DisableMultiplePackages,
+  EnableMultiplePackages,
 } from '../../../wailsjs/go/backend/App';
 import { backend } from '../../../wailsjs/go/models';
 
@@ -89,6 +91,11 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
 
   const [isBatchUninstalling, setIsBatchUninstalling] = useState(false);
   const [isBatchUninstallOpen, setIsBatchUninstallOpen] = useState(false);
+
+  const [isBatchDisabling, setIsBatchDisabling] = useState(false);
+  const [isBatchDisablingOpen, setIsBatchDisablingOpen] = useState(false);
+  const [isBatchEnabling, setIsBatchEnabling] = useState(false);
+  const [isBatchEnablingOpen, setIsBatchEnablingOpen] = useState(false);
 
   const loadPackages = async (currentFilter: FilterType) => {
     setIsLoadingList(true);
@@ -330,6 +337,60 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
       setIsBatchUninstallOpen(false);
     }
   };
+
+  const handleMultiDisable = async () => {
+    if (selectedPackages.length === 0) return;
+    setIsBatchDisabling(true);
+    const toastId = toast.loading(
+      `Disabling ${selectedPackages.length} packages...`
+    );
+    try {
+      const output = await DisableMultiplePackages(selectedPackages);
+      toast.success('Batch Disable Complete', {
+        description: output,
+        id: toastId,
+        duration: 8000,
+      });
+      loadPackages(filter);
+      setSelectedPackages([]);
+    } catch (error) {
+      toast.error('Batch Disable Failed', {
+        description: String(error),
+        id: toastId,
+      });
+    } finally {
+      setIsBatchDisabling(false);
+      setIsBatchDisablingOpen(false);
+    }
+  };
+
+  const handleMultiEnable = async () => {
+    if (selectedPackages.length === 0) return;
+    setIsBatchEnabling(true);
+    const toastId = toast.loading(
+      `Enabling ${selectedPackages.length} packages...`
+    );
+    try {
+      const output = await EnableMultiplePackages(selectedPackages);
+      toast.success('Batch Enable Complete', {
+        description: output,
+        id: toastId,
+        duration: 8000,
+      });
+      loadPackages(filter);
+      setSelectedPackages([]);
+    } catch (error) {
+      toast.error('Batch Enable Failed', {
+        description: String(error),
+        id: toastId,
+      });
+    } finally {
+      setIsBatchEnabling(false);
+      setIsBatchEnablingOpen(false);
+    }
+  };
+
+  const isBusy = isLoadingList || isBatchUninstalling || isBatchDisabling || isBatchEnabling;
   
   return (
     <>
@@ -391,6 +452,78 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                 <Trash2 className="mr-2 h-4 w-4" />
               )}
               Yes, Uninstall {selectedPackages.length}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={isBatchDisablingOpen}
+        onOpenChange={setIsBatchDisablingOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to attempt to disable{' '}
+              <span className="font-semibold text-foreground">
+                {selectedPackages.length} selected packages
+              </span>
+              .
+              <br />
+              <strong className="text-destructive">
+                System apps will likely fail (this is normal).
+              </strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBatchDisabling}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMultiDisable}
+              disabled={isBatchDisabling}
+            >
+              {isBatchDisabling ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <EyeOff className="mr-2 h-4 w-4" />
+              )}
+              Yes, Disable {selectedPackages.length}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={isBatchEnablingOpen}
+        onOpenChange={setIsBatchEnablingOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to attempt to enable{' '}
+              <span className="font-semibold text-foreground">
+                {selectedPackages.length} selected packages
+              </span>
+              .
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBatchEnabling}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMultiEnable}
+              disabled={isBatchEnabling}
+            >
+              {isBatchEnabling ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Eye className="mr-2 h-4 w-4" />
+              )}
+              Yes, Enable {selectedPackages.length}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -519,7 +652,8 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                 List of applications installed on the device.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {/* Grup Filter */}
               <Button
                 variant={filter === 'user' ? 'default' : 'outline'}
                 size="sm"
@@ -545,22 +679,41 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => loadPackages(filter)}
-                disabled={isLoadingList || isBatchUninstalling}
+                disabled={isBusy}
               >
-                {isLoadingList ? (
+                {isBusy ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <RefreshCw className="h-4 w-4" />
                 )}
               </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={selectedPackages.length === 0 || isBusy}
+                onClick={() => setIsBatchEnablingOpen(true)}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Enable ({selectedPackages.length})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={selectedPackages.length === 0 || isBusy}
+                onClick={() => setIsBatchDisablingOpen(true)}
+              >
+                <EyeOff className="mr-2 h-4 w-4" />
+                Disable ({selectedPackages.length})
+              </Button>
               <Button
                 variant="destructive"
                 size="sm"
-                disabled={selectedPackages.length === 0 || isBatchUninstalling}
+                disabled={selectedPackages.length === 0 || isBusy}
                 onClick={() => setIsBatchUninstallOpen(true)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Uninstall Selected ({selectedPackages.length})
+                Uninstall ({selectedPackages.length})
               </Button>
             </div>
           </CardHeader>

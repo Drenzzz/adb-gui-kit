@@ -22,12 +22,20 @@ export function DeleteMultipleFiles(arg1) {
   return window['go']['backend']['App']['DeleteMultipleFiles'](arg1);
 }
 
+export function DisableMultiplePackages(arg1) {
+  return window['go']['backend']['App']['DisableMultiplePackages'](arg1);
+}
+
 export function DisablePackage(arg1) {
   return window['go']['backend']['App']['DisablePackage'](arg1);
 }
 
 export function DisconnectWirelessAdb(arg1, arg2) {
   return window['go']['backend']['App']['DisconnectWirelessAdb'](arg1, arg2);
+}
+
+export function EnableMultiplePackages(arg1) {
+  return window['go']['backend']['App']['EnableMultiplePackages'](arg1);
 }
 
 export function EnablePackage(arg1) {

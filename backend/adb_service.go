@@ -431,6 +431,65 @@ func (a *App) UninstallMultiplePackages(packageNames []string) (string, error) {
 	return summary, nil
 }
 
+func (a *App) DisableMultiplePackages(packageNames []string) (string, error) {
+	if len(packageNames) == 0 {
+		return "", fmt.Errorf("no packages selected")
+	}
+
+	var successCount int
+	var failCount int
+	var errorMessages strings.Builder
+
+	for _, pkgName := range packageNames {
+		_, err := a.DisablePackage(pkgName)
+		if err != nil {
+			failCount++
+			errorMsg := err.Error()
+			if strings.Contains(errorMsg, "is not allowed") {
+				errorMessages.WriteString(fmt.Sprintf("Failed %s: (System app?)\n", pkgName))
+			} else {
+				errorMessages.WriteString(fmt.Sprintf("Failed %s: %v\n", pkgName, err))
+			}
+		} else {
+			successCount++
+		}
+	}
+
+	summary := fmt.Sprintf("Successfully disabled %d packages.", successCount)
+	if failCount > 0 {
+		summary += fmt.Sprintf(" Failed to disable %d packages.\nDetails:\n%s", failCount, errorMessages.String())
+	}
+
+	return summary, nil
+}
+
+func (a *App) EnableMultiplePackages(packageNames []string) (string, error) {
+	if len(packageNames) == 0 {
+		return "", fmt.Errorf("no packages selected")
+	}
+
+	var successCount int
+	var failCount int
+	var errorMessages strings.Builder
+
+	for _, pkgName := range packageNames {
+		_, err := a.EnablePackage(pkgName)
+		if err != nil {
+			failCount++
+			errorMessages.WriteString(fmt.Sprintf("Failed %s: %v\n", pkgName, err))
+		} else {
+			successCount++
+		}
+	}
+
+	summary := fmt.Sprintf("Successfully enabled %d packages.", successCount)
+	if failCount > 0 {
+		summary += fmt.Sprintf(" Failed to enable %d packages.\nDetails:\n%s", failCount, errorMessages.String())
+	}
+
+	return summary, nil
+}
+
 func (a *App) DeleteMultipleFiles(fullPaths []string) (string, error) {
 	if len(fullPaths) == 0 {
 		return "", fmt.Errorf("no files selected")

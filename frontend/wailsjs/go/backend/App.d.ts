@@ -12,9 +12,13 @@ export function DeleteFile(arg1:string):Promise<string>;
 
 export function DeleteMultipleFiles(arg1:Array<string>):Promise<string>;
 
+export function DisableMultiplePackages(arg1:Array<string>):Promise<string>;
+
 export function DisablePackage(arg1:string):Promise<string>;
 
 export function DisconnectWirelessAdb(arg1:string,arg2:string):Promise<string>;
+
+export function EnableMultiplePackages(arg1:Array<string>):Promise<string>;
 
 export function EnablePackage(arg1:string):Promise<string>;
 
