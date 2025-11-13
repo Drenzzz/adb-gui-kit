@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import path from 'path-browserify';
 
 import {
@@ -70,6 +70,9 @@ import {
   AlertTriangle,
   Pencil,
   FolderPlus, 
+  Search,
+  ArrowUpAZ,
+  ArrowDownAZ,
 } from 'lucide-react';
 
 type FileEntry = backend.FileEntry;
@@ -94,6 +97,9 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<'name' | 'date' | 'size'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     if (isRenameOpen && selectedFileNames.length === 1) {
@@ -433,9 +439,44 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
     }
   };
 
+  const visibleFiles = useMemo(() => {
+    const lowerSearch = searchTerm.trim().toLowerCase();
+
+    const filtered = fileList.filter((file) =>
+      lowerSearch ? file.Name.toLowerCase().includes(lowerSearch) : true
+    );
+
+    return filtered.sort((a, b) => {
+      if (a.Type === 'Directory' && b.Type !== 'Directory') return -1;
+      if (a.Type !== 'Directory' && b.Type === 'Directory') return 1;
+
+      let comparison = 0;
+
+      if (sortField === 'name') {
+        comparison = a.Name.localeCompare(b.Name);
+      } else if (sortField === 'date') {
+        const dateA = `${a.Date ?? ''} ${a.Time ?? ''}`.trim();
+        const dateB = `${b.Date ?? ''} ${b.Time ?? ''}`.trim();
+        comparison = dateA.localeCompare(dateB);
+      } else if (sortField === 'size') {
+        const sizeA = parseInt(a.Size || '0', 10);
+        const sizeB = parseInt(b.Size || '0', 10);
+        comparison = sizeA - sizeB;
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [fileList, searchTerm, sortField, sortDirection]);
+
+  const allVisibleSelected =
+    visibleFiles.length > 0 &&
+    visibleFiles.every((file) => selectedFileNames.includes(file.Name));
+
   const handleSelectFile = (fileName: string, checked: boolean) => {
     if (checked) {
-      setSelectedFileNames((prev) => [...prev, fileName]);
+      setSelectedFileNames((prev) =>
+        prev.includes(fileName) ? prev : [...prev, fileName]
+      );
     } else {
       setSelectedFileNames((prev) =>
         prev.filter((name) => name !== fileName)
@@ -443,11 +484,27 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
     }
   };
 
-  const handleSelectAllFiles = (checked: boolean) => {
+  const handleSelectAllFiles = (
+    checked: boolean,
+    targetList: FileEntry[] = fileList
+  ) => {
+    const targetNames = targetList.map((file) => file.Name);
+    const targetSet = new Set(targetNames);
+
+    if (targetNames.length === 0) {
+      return;
+    }
+
     if (checked) {
-      setSelectedFileNames(fileList.map((file) => file.Name));
+      setSelectedFileNames((prev) => {
+        const merged = new Set(prev);
+        targetSet.forEach((name) => merged.add(name));
+        return Array.from(merged);
+      });
     } else {
-      setSelectedFileNames([]);
+      setSelectedFileNames((prev) =>
+        prev.filter((name) => !targetSet.has(name))
+      );
     }
   };
 
@@ -659,6 +716,47 @@ const isBusy =
               <p className="font-mono text-sm truncate">{currentPath}</p>
             </div>
           </CardContent>
+
+          <CardContent className="pt-0">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="w-full lg:max-w-sm relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search files or folders..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={sortField}
+                  onChange={(e) =>
+                    setSortField(e.target.value as 'name' | 'date')
+                  }
+                  className="h-9 min-w-[170px] rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="name">Sort by Name</option>
+                  <option value="date">Sort by Date</option>
+                  <option value="size">Sort by Size</option>
+                </select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+                  }
+                  aria-label="Toggle sort direction"
+                >
+                  {sortDirection === 'asc' ? (
+                    <ArrowUpAZ className="h-4 w-4" />
+                  ) : (
+                    <ArrowDownAZ className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
         </Card>
 
         <Card className="flex-1 flex flex-col overflow-hidden min-h-0">
@@ -669,12 +767,12 @@ const isBusy =
                   <TableRow>
                     <TableHead className="w-[50px]">
                       <Checkbox
-                        checked={
-                          fileList.length > 0 &&
-                          selectedFileNames.length === fileList.length
-                        }
+                        checked={allVisibleSelected}
                         onCheckedChange={(checked) =>
-                          handleSelectAllFiles(checked as boolean)
+                          handleSelectAllFiles(
+                            checked as boolean,
+                            visibleFiles
+                          )
                         }
                         aria-label="Select all"
                       />
@@ -693,14 +791,16 @@ const isBusy =
                         <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                       </TableCell>
                     </TableRow>
-                  ) : fileList.length === 0 ? (
+                  ) : visibleFiles.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="h-24 text-center">
-                        This directory is empty.
+                        {fileList.length === 0
+                          ? 'This directory is empty.'
+                          : 'No files match your search/filter.'}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    fileList.map((file) => (
+                    visibleFiles.map((file) => (
                       <TableRow
                         key={file.Name}
                         onClick={() => handleRowClick(file)}
