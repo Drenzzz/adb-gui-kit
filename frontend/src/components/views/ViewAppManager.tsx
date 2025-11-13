@@ -402,7 +402,79 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
     visiblePackages.length > 0 &&
     visiblePackages.every((pkg) => selectedPackages.includes(pkg.PackageName));
 
-  const isBusy = isLoadingList || isBatchUninstalling || isBatchDisabling || isBatchEnabling;
+  const { totalPackages, enabledPackages, disabledPackages } = useMemo(() => {
+    const total = packageList.length;
+    const enabledCount = packageList.filter((pkg) => pkg.IsEnabled).length;
+    return {
+      totalPackages: total,
+      enabledPackages: enabledCount,
+      disabledPackages: total - enabledCount,
+    };
+  }, [packageList]);
+
+  const selectedCount = selectedPackages.length;
+
+  const filterOptions: { label: string; value: FilterType }[] = [
+    { label: 'User apps', value: 'user' },
+    { label: 'System apps', value: 'system' },
+    { label: 'All apps', value: 'all' },
+  ];
+
+  const statusOptions: { label: string; value: StatusFilter }[] = [
+    { label: 'Any status', value: 'all' },
+    { label: 'Enabled only', value: 'enabled' },
+    { label: 'Disabled only', value: 'disabled' },
+  ];
+
+  const sortOptions: { label: string; value: 'asc' | 'desc' }[] = [
+    { label: 'Name (A-Z)', value: 'asc' },
+    { label: 'Name (Z-A)', value: 'desc' },
+  ];
+
+  const filterLabel =
+    filterOptions.find((option) => option.value === filter)?.label ?? 'Apps';
+  const statusLabel =
+    statusOptions.find((option) => option.value === statusFilter)?.label ??
+    'Any status';
+  const sortLabel =
+    sortOptions.find((option) => option.value === sortOrder)?.label ??
+    'Name (A-Z)';
+
+  const quickControlSelects = [
+    {
+      label: 'App source',
+      value: filterLabel,
+      options: filterOptions,
+      onSelect: (value: string) => setFilter(value as FilterType),
+      activeValue: filter,
+    },
+    {
+      label: 'Status',
+      value: statusLabel,
+      options: statusOptions,
+      onSelect: (value: string) => setStatusFilter(value as StatusFilter),
+      activeValue: statusFilter,
+    },
+    {
+      label: 'Sort order',
+      value: sortLabel,
+      options: sortOptions,
+      onSelect: (value: string) => setSortOrder(value as 'asc' | 'desc'),
+      activeValue: sortOrder,
+    },
+  ];
+
+  const handleClearSelection = () => setSelectedPackages([]);
+  const handleResetFilters = () => {
+    setFilter('user');
+    setStatusFilter('all');
+    setSortOrder('asc');
+    setSearchTerm('');
+    setSelectedPackages([]);
+  };
+
+  const isBusy =
+    isLoadingList || isBatchUninstalling || isBatchDisabling || isBatchEnabling;
   
   return (
     <>
@@ -541,298 +613,318 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="flex flex-col gap-6">
-        
-        <div className="grid grid-cols-1 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package />
-                Install APK
-              </CardTitle>
-              <CardDescription>
-                Select an .apk file from your computer to install it on your
-                device.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+
+      <div className="space-y-6">
+        <Card className="border border-border/60 bg-card/90 backdrop-blur shadow-xl">
+          <CardContent className="space-y-6 p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-2xl">Application Manager</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Install, toggle, and maintain packages with a streamlined workflow.
+                </p>
+              </div>
               <Button
                 variant="outline"
-                className="w-full"
-                onClick={handleSelectApk}
-                disabled={isInstalling}
+                size="lg"
+                onClick={() => loadPackages(filter)}
+                disabled={isBusy}
+                className="w-full md:w-auto"
               >
-                <FileUp className="mr-2 h-4 w-4" />
-                Select APK File
+                {isBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
+                Sync Packages
               </Button>
-              <p className="text-sm text-muted-foreground truncate">
-                {apkPath ? apkPath : 'No file selected.'}
-              </p>
-              <Button
-                variant="default"
-                className="w-full"
-                disabled={isInstalling || !apkPath}
-                onClick={handleInstall}
-              >
-                {isInstalling ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Package className="mr-2 h-4 w-4" />
-                )}
-                Install
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { label: 'Total packages', value: totalPackages },
+                { label: 'Enabled', value: enabledPackages },
+                { label: 'Disabled', value: disabledPackages },
+                { label: 'Selected', value: selectedCount },
+              ].map((metric) => (
+                <div
+                  key={metric.label}
+                  className="rounded-2xl border border-border/70 bg-muted/30 p-4 text-foreground"
+                >
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">{metric.label}</p>
+                  <p className="text-2xl font-semibold">{metric.value}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-        <Card className="flex-1 flex flex-col overflow-hidden min-h-[400px]">
+        <Card className="border border-border/60 bg-card/90 backdrop-blur shadow-xl">
+          <CardHeader>
+            <CardTitle>Quick controls</CardTitle>
+            <CardDescription>Adjust filters or batch actions without leaving the table.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="flex flex-col gap-3 lg:flex-row">
+              {quickControlSelects.map((config) => (
+                <div key={config.label} className="flex-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">{config.label}</p>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between">
+                        {config.value}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      {config.options.map((option) => (
+                      <DropdownMenuItem
+                        key={option.value}
+                        onClick={() => config.onSelect(option.value)}
+                        className={cn(option.value === config.activeValue && 'font-semibold text-primary')}
+                      >
+                        {option.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-2xl border border-dashed border-muted-foreground/40 bg-muted/30 p-4">
+              <p className="text-sm font-semibold text-foreground">{selectedCount} selected</p>
+              <p className="text-xs text-muted-foreground">
+                {selectedCount === 0
+                  ? 'Choose packages from the list to enable bulk actions.'
+                  : 'Apply one of the actions below to the selected packages.'}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={selectedCount === 0 || isBusy}
+                onClick={() => setIsBatchEnablingOpen(true)}
+              >
+                <Eye className="h-4 w-4" />
+                Enable ({selectedCount})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={selectedCount === 0 || isBusy}
+                onClick={() => setIsBatchDisablingOpen(true)}
+              >
+                <EyeOff className="h-4 w-4" />
+                Disable ({selectedCount})
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={selectedCount === 0 || isBusy}
+                onClick={() => setIsBatchUninstallOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Uninstall ({selectedCount})
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={selectedCount === 0}
+                onClick={handleClearSelection}
+              >
+                Clear selection
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+                Reset filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="flex flex-col overflow-hidden border border-border/60 shadow-xl">
           <CardHeader className="space-y-4">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div className="flex-1">
-                <CardTitle className="flex items-center gap-2">
-                  <List />
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <List className="h-5 w-5 text-primary" />
                   Installed Packages
                 </CardTitle>
                 <CardDescription>
-                  List of applications installed on the device.
+                  Showing {visiblePackages.length} of {totalPackages} packages on the device.
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2 flex-wrap justify-end">
-                <Button
-                  variant={filter === 'user' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter('user')}
-                >
-                  User
-                </Button>
-                <Button
-                  variant={filter === 'system' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter('system')}
-                >
-                  System
-                </Button>
-                <Button
-                  variant={filter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter('all')}
-                >
-                  All
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => loadPackages(filter)}
-                  disabled={isBusy}
-                  aria-label="Refresh packages"
-                >
-                  {isBusy ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+              <Input
+                placeholder="Search package name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full md:w-64"
+              />
             </div>
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  placeholder="Search package name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full sm:w-48"
-                />
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                  className="h-9 min-w-[140px] rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="asc">Name (A-Z)</option>
-                  <option value="desc">Name (Z-A)</option>
-                </select>
-                <Button
-                  variant={statusFilter === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('all')}
-                >
-                  All Status
-                </Button>
-                <Button
-                  variant={statusFilter === 'enabled' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('enabled')}
-                >
-                  Enabled
-                </Button>
-                <Button
-                  variant={statusFilter === 'disabled' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('disabled')}
-                >
-                  Disabled
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={selectedPackages.length === 0 || isBusy}
-                  onClick={() => setIsBatchEnablingOpen(true)}
-                >
-                  <Eye className="mr-2 h-4 w-4" />
-                  Enable ({selectedPackages.length})
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={selectedPackages.length === 0 || isBusy}
-                  onClick={() => setIsBatchDisablingOpen(true)}
-                >
-                  <EyeOff className="mr-2 h-4 w-4" />
-                  Disable ({selectedPackages.length})
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={selectedPackages.length === 0 || isBusy}
-                  onClick={() => setIsBatchUninstallOpen(true)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Uninstall ({selectedPackages.length})
-                </Button>
-              </div>
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
+                Source: {filterLabel}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
+                Status: {statusLabel}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">
+                Sort: {sortLabel}
+              </span>
             </div>
           </CardHeader>
-          <CardContent className="p-0 flex-1 flex overflow-hidden min-h-0">
-            <ScrollArea className="flex-1 h-full">
-              <Table>
-                <TableHeader className="sticky top-0 bg-muted/50 backdrop-blur-sm">
-                  <TableRow>
-                    <TableHead className="w-[50px]">
-                      <Checkbox
-                        checked={allVisibleSelected}
-                        onCheckedChange={(checked) =>
-                          handleSelectAllPackages(
-                            checked as boolean,
-                            visiblePackages
-                          )
-                        }
-                        aria-label="Select all"
-                      />
-                    </TableHead>
-                    <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead>Package Name</TableHead>
-                    <TableHead className="w-[100px] text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoadingList ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
-                        <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                      </TableCell>
-                    </TableRow>
-                  ) : visiblePackages.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
-                        No packages match your filters.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    visiblePackages.map((pkg) => (
-                      <TableRow
-                        key={pkg.PackageName}
-                        data-state={
-                          selectedPackages.includes(pkg.PackageName)
-                            ? 'selected'
-                            : !pkg.IsEnabled
-                            ? 'disabled'
-                            : ''
-                        }
-                        className="hover:bg-muted/50"
-                      >
-                        <TableCell>
+          <CardContent className="space-y-4">
+            <div className="rounded-2xl border bg-card/80">
+              <ScrollArea className="max-h-[60vh] overflow-auto">
+                <div className="min-w-[640px]">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur">
+                      <TableRow>
+                        <TableHead className="w-[50px]">
                           <Checkbox
-                            checked={selectedPackages.includes(
-                              pkg.PackageName
-                            )}
+                            checked={allVisibleSelected}
                             onCheckedChange={(checked) =>
-                              handleSelectPackage(
-                                pkg.PackageName,
-                                checked as boolean
-                              )
+                              handleSelectAllPackages(checked as boolean, visiblePackages)
                             }
-                            aria-label="Select row"
+                            aria-label="Select all"
                           />
-                        </TableCell>
-                        <TableCell>
-                          {pkg.IsEnabled ? (
-                            <span className="flex items-center text-emerald-500">
-                              <Eye className="mr-2 h-4 w-4" />
-                              Enabled
-                            </span>
-                          ) : (
-                            <span className="flex items-center text-muted-foreground">
-                              <EyeOff className="mr-2 h-4 w-4" />
-                              Disabled
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-mono">
-                          {pkg.PackageName}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {isTogglingPackageName === pkg.PackageName ||
-                          isPullingPackageName === pkg.PackageName ? (
-                            <Loader2 className="h-4 w-4 animate-spin ml-auto" />
-                          ) : (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent>
-                                <DropdownMenuItem
-                                  onClick={() => handleTogglePackage(pkg)}
-                                >
-                                  {pkg.IsEnabled ? (
-                                    <EyeOff className="mr-2 h-4 w-4" />
-                                  ) : (
-                                    <Eye className="mr-2 h-4 w-4" />
-                                  )}
-                                  {pkg.IsEnabled ? 'Disable' : 'Enable'}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handlePullApk(pkg)}
-                                >
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Pull APK
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setPkgToAction(pkg.PackageName);
-                                    setIsClearDataOpen(true);
-                                  }}
-                                >
-                                  <Eraser className="mr-2 h-4 w-4" />
-                                  Clear Data
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </TableCell>
+                        </TableHead>
+                        <TableHead className="w-[110px]">Status</TableHead>
+                        <TableHead>Package Name</TableHead>
+                        <TableHead className="w-[120px] text-right">Actions</TableHead>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoadingList ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="h-32 text-center">
+                            <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                          </TableCell>
+                        </TableRow>
+                      ) : visiblePackages.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="h-32 text-center">
+                            No packages match your filters.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        visiblePackages.map((pkg) => (
+                          <TableRow
+                            key={pkg.PackageName}
+                            data-state={
+                              selectedPackages.includes(pkg.PackageName)
+                                ? 'selected'
+                                : !pkg.IsEnabled
+                                ? 'disabled'
+                                : ''
+                            }
+                            className="hover:bg-muted/40"
+                          >
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedPackages.includes(pkg.PackageName)}
+                                onCheckedChange={(checked) =>
+                                  handleSelectPackage(pkg.PackageName, checked as boolean)
+                                }
+                                aria-label="Select row"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {pkg.IsEnabled ? (
+                                <span className="flex items-center text-emerald-500">
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Enabled
+                                </span>
+                              ) : (
+                                <span className="flex items-center text-muted-foreground">
+                                  <EyeOff className="mr-2 h-4 w-4" />
+                                  Disabled
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-mono text-sm">{pkg.PackageName}</TableCell>
+                            <TableCell className="text-right">
+                              {isTogglingPackageName === pkg.PackageName ||
+                              isPullingPackageName === pkg.PackageName ? (
+                                <Loader2 className="ml-auto h-4 w-4 animate-spin" />
+                              ) : (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon-sm">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleTogglePackage(pkg)}>
+                                      {pkg.IsEnabled ? (
+                                        <EyeOff className="mr-2 h-4 w-4" />
+                                      ) : (
+                                        <Eye className="mr-2 h-4 w-4" />
+                                      )}
+                                      {pkg.IsEnabled ? 'Disable' : 'Enable'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handlePullApk(pkg)}>
+                                      <Download className="mr-2 h-4 w-4" />
+                                      Pull APK
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setPkgToAction(pkg.PackageName);
+                                        setIsClearDataOpen(true);
+                                      }}
+                                    >
+                                      <Eraser className="mr-2 h-4 w-4" />
+                                      Clear Data
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border/60 bg-card/90 backdrop-blur shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-xl">Install new application</CardTitle>
+            <CardDescription>
+              Use the file picker below to sideload an APK onto the connected device.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="rounded-2xl border-2 border-dashed border-muted-foreground/40 bg-muted/30 p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Selected file</p>
+              <p className="mt-2 break-all text-base font-semibold text-foreground">
+                {apkPath ? apkPath : 'No file selected yet'}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                onClick={handleSelectApk}
+                disabled={isInstalling}
+              >
+                <FileUp className="h-4 w-4" />
+                Choose APK
+              </Button>
+              <Button size="lg" className="flex-1" disabled={isInstalling || !apkPath} onClick={handleInstall}>
+                {isInstalling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
+                Install to device
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Supported on USB and wireless debugging sessions. Ensure the device allows installations from unknown
+              sources.
+            </p>
           </CardContent>
         </Card>
       </div>
+
     </>
   );
 }
