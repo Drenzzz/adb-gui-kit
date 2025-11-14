@@ -29,12 +29,6 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -47,54 +41,22 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import {
   Loader2,
-  RefreshCw,
   Upload,
   Download,
-  Folder,
-  File,
-  ArrowUp,
   FolderUp,
   Trash2,
   AlertTriangle,
   Pencil,
   FolderPlus, 
-  Search,
-  ArrowUpAZ,
-  ArrowDownAZ,
-  MoreHorizontal,
-  type LucideIcon,
 } from 'lucide-react';
+import { ExplorerOverviewCard } from '@/components/fileExplorer/ExplorerOverviewCard';
+import { DirectoryContentsCard } from '@/components/fileExplorer/DirectoryContentsCard';
+import type { ExplorerActionItem } from '@/components/fileExplorer/ExplorerOverviewCard';
 
 type FileEntry = backend.FileEntry;
-
-type ButtonVariant = React.ComponentProps<typeof Button>['variant'];
-
-type ActionItem = {
-  key: string;
-  label: string;
-  icon: LucideIcon;
-  onClick: () => void;
-  disabled?: boolean;
-  variant?: ButtonVariant;
-};
 
 export function ViewFileExplorer({ activeView }: { activeView: string }) {
   const [fileList, setFileList] = useState<FileEntry[]>([]);
@@ -553,7 +515,7 @@ const isBusy =
     [fileList]
   );
 
-  const actionItems: ActionItem[] = [
+  const actionItems: ExplorerActionItem[] = [
     {
       key: 'import-file',
       label: 'Import file',
@@ -718,248 +680,39 @@ const isBusy =
       </AlertDialog>
 
       <div className="flex flex-col gap-5">
-        <Card className="border border-border/60 bg-card/90 shadow-xl">
-          <CardContent className="space-y-6 p-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <CardTitle className="text-xl">File Explorer</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Navigate device storage, move files, and manage folders.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:w-auto w-full">
-                {[
-                  { label: 'Items', value: explorerStats.totalItems },
-                  { label: 'Folders', value: explorerStats.folderCount },
-                  { label: 'Files', value: explorerStats.fileCount },
-                  { label: 'Selected', value: selectedCount },
-                ].map((metric) => (
-                  <div
-                    key={metric.label}
-                    className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3 text-center md:text-left"
-                  >
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {metric.label}
-                    </p>
-                    <p className="text-xl font-semibold">{metric.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <ExplorerOverviewCard
+          explorerStats={explorerStats}
+          selectedCount={selectedCount}
+          currentPath={currentPath}
+          isBusy={isBusy}
+          isLoading={isLoading}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          sortField={sortField}
+          onSortFieldChange={(value) => setSortField(value)}
+          sortDirection={sortDirection}
+          onToggleSortDirection={() =>
+            setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+          }
+          onBack={handleBackClick}
+          canGoBack={currentPath !== '/'}
+          onRefresh={() => loadFiles(currentPath)}
+          actionItems={actionItems}
+        />
 
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-1 flex-wrap items-center gap-2">
-                <div className="inline-flex rounded-lg border border-border/60 bg-muted/30 p-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleBackClick}
-                    disabled={currentPath === '/' || isBusy}
-                    aria-label="Go up"
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => loadFiles(currentPath)}
-                    disabled={isBusy}
-                    aria-label="Refresh"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <div className="min-w-[220px] flex-1 rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Current path
-                  </p>
-                  <p className="font-mono text-sm break-all">{currentPath}</p>
-                </div>
-              </div>
-              <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search files or folders..."
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={sortField}
-                    onChange={(e) =>
-                      setSortField(e.target.value as 'name' | 'date' | 'size')
-                    }
-                    className="h-9 min-w-[150px] rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="name">Sort by Name</option>
-                    <option value="date">Sort by Date</option>
-                    <option value="size">Sort by Size</option>
-                  </select>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setSortDirection((prev) =>
-                        prev === 'asc' ? 'desc' : 'asc'
-                      )
-                    }
-                    aria-label="Toggle sort direction"
-                  >
-                    {sortDirection === 'asc' ? (
-                      <ArrowUpAZ className="h-4 w-4" />
-                    ) : (
-                      <ArrowDownAZ className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
-              <p className="text-sm text-muted-foreground">
-                {selectedCount === 0
-                  ? 'Select items to enable rename, export, or delete actions.'
-                  : `${selectedCount} item${selectedCount > 1 ? 's' : ''} selected.`}
-              </p>
-              <div className="mt-3 hidden flex-wrap gap-2 lg:flex">
-                {actionItems.map((action) => (
-                  <Button
-                    key={action.key}
-                    variant={action.variant ?? 'outline'}
-                    onClick={action.onClick}
-                    disabled={action.disabled}
-                  >
-                    <action.icon className="mr-2 h-4 w-4" />
-                    {action.label}
-                  </Button>
-                ))}
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="lg:hidden mt-3 w-full justify-between">
-                    Actions
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  {actionItems.map((action) => (
-                    <DropdownMenuItem
-                      key={action.key}
-                      disabled={action.disabled}
-                      onClick={() => {
-                        if (!action.disabled) action.onClick();
-                      }}
-                    >
-                      <action.icon className="mr-2 h-4 w-4" />
-                      {action.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="flex flex-1 flex-col overflow-hidden border border-border/60 shadow-xl">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-lg">Directory contents</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Showing {visibleFiles.length} of {fileList.length} item(s) in this location.
-            </p>
-          </CardHeader>
-          <CardContent className="p-0 flex-1 flex overflow-hidden min-h-0">
-            <ScrollArea className="flex-1 h-full max-h-[65vh]">
-              <Table>
-                <TableHeader className="sticky top-0 bg-muted/60 backdrop-blur">
-                  <TableRow>
-                    <TableHead className="w-[50px]">
-                      <Checkbox
-                        checked={allVisibleSelected}
-                        onCheckedChange={(checked) =>
-                          handleSelectAllFiles(
-                            checked as boolean,
-                            visibleFiles
-                          )
-                        }
-                        aria-label="Select all"
-                      />
-                    </TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
-                        <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                      </TableCell>
-                    </TableRow>
-                  ) : visibleFiles.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
-                        {fileList.length === 0
-                          ? 'This directory is empty.'
-                          : 'No files match your search/filter.'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    visibleFiles.map((file) => (
-                      <TableRow
-                        key={file.Name}
-                        onClick={() => handleRowClick(file)}
-                        onDoubleClick={() => handleRowDoubleClick(file)}
-                        data-state={
-                          selectedFileNames.includes(file.Name)
-                            ? 'selected'
-                            : ''
-                        }
-                        className="cursor-pointer"
-                      >
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedFileNames.includes(file.Name)}
-                            onCheckedChange={(checked) =>
-                              handleSelectFile(
-                                file.Name,
-                                checked as boolean
-                              )
-                            }
-                            onClick={(e) => e.stopPropagation()}
-                            aria-label="Select row"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {file.Type === 'Directory' ? (
-                            <Folder className="h-4 w-4 text-blue-500" />
-                          ) : (
-                            <File className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {file.Name}
-                        </TableCell>
-                        <TableCell>{file.Size}</TableCell>
-                        <TableCell>{file.Date}</TableCell>
-                        <TableCell>{file.Time}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+        <DirectoryContentsCard
+          visibleFiles={visibleFiles}
+          fileList={fileList}
+          isLoading={isLoading}
+          allVisibleSelected={allVisibleSelected}
+          onToggleSelectAll={(checked) =>
+            handleSelectAllFiles(checked, visibleFiles)
+          }
+          selectedFileNames={selectedFileNames}
+          onSelectFile={handleSelectFile}
+          onRowClick={handleRowClick}
+          onRowDoubleClick={handleRowDoubleClick}
+        />
       </div>
     </>
   );
