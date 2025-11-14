@@ -51,81 +51,85 @@ export function DirectoryContentsCard({
           Showing {visibleFiles.length} of {fileList.length} item(s) in this location.
         </p>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 overflow-hidden p-0">
-        <ScrollArea className="h-full max-h-[65vh] flex-1">
-          <Table>
-            <TableHeader className="sticky top-0 bg-muted/60 backdrop-blur">
-              <TableRow>
-                <TableHead className="w-[50px]">
-                  <Checkbox
-                    checked={allVisibleSelected}
-                    onCheckedChange={(checked) =>
-                      onToggleSelectAll(Boolean(checked))
-                    }
-                    aria-label="Select all"
-                  />
-                </TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                  </TableCell>
-                </TableRow>
-              ) : visibleFiles.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    {fileList.length === 0
-                      ? "This directory is empty."
-                      : "No files match your search/filter."}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                visibleFiles.map((file) => {
-                  const isSelected = selectedFileNames.includes(file.Name);
-                  return (
-                    <TableRow
-                      key={file.Name}
-                      onClick={() => onRowClick(file)}
-                      onDoubleClick={() => onRowDoubleClick(file)}
-                      data-state={isSelected ? "selected" : ""}
-                      className="cursor-pointer"
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(checked) =>
-                            onSelectFile(file.Name, Boolean(checked))
-                          }
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label="Select row"
-                        />
+      <CardContent className="space-y-4">
+        <div className="rounded-2xl border bg-card/80">
+          <ScrollArea className="max-h-[60vh] overflow-auto">
+            <div className="min-w-[640px]">
+              <Table>
+                <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur">
+                  <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={allVisibleSelected}
+                        onCheckedChange={(checked) =>
+                          onToggleSelectAll(Boolean(checked))
+                        }
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">
+                        <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                       </TableCell>
-                      <TableCell>
-                        {file.Type === "Directory" ? (
-                          <Folder className="h-4 w-4 text-blue-500" />
-                        ) : (
-                          <File className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">{file.Name}</TableCell>
-                      <TableCell>{file.Size}</TableCell>
-                      <TableCell>{file.Date}</TableCell>
-                      <TableCell>{file.Time}</TableCell>
                     </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+                  ) : visibleFiles.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">
+                        {fileList.length === 0
+                          ? "This directory is empty."
+                          : "No files match your search/filter."}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    visibleFiles.map((file) => {
+                      const isSelected = selectedFileNames.includes(file.Name);
+                      return (
+                        <TableRow
+                          key={file.Name}
+                          onClick={() => onRowClick(file)}
+                          onDoubleClick={() => onRowDoubleClick(file)}
+                          data-state={isSelected ? "selected" : ""}
+                          className="cursor-pointer"
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) =>
+                                onSelectFile(file.Name, Boolean(checked))
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              aria-label="Select row"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {file.Type === "Directory" ? (
+                              <Folder className="h-4 w-4 text-blue-500" />
+                            ) : (
+                              <File className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">{file.Name}</TableCell>
+                          <TableCell>{file.Size}</TableCell>
+                          <TableCell>{file.Date}</TableCell>
+                          <TableCell>{file.Time}</TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
