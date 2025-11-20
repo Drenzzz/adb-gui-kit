@@ -1,0 +1,241 @@
+name: Wails Build
+
+on:
+  push:
+    branches: ["main", "master", "staging"]
+  pull_request:
+    branches: ["main", "master", "staging"]
+
+env:
+  GO_VERSION: "1.23"
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10"
+
+jobs:
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Install UPX
+        run: choco install upx
+
+      - name: Install NSIS
+        run: |
+          # Install Scoop
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+
+          # Install NSIS via Scoop
+          scoop bucket add extras
+          scoop install nsis
+
+          # Ensure Scoop shims are in the PATH for future steps
+          echo "$env:USERPROFILE\scoop\shims" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install frontend dependencies
+        run: pnpm install
+        working-directory: frontend
+
+      - name: Build Windows (Standalone & NSIS)
+        run: wails build -clean -upx -nsis
+
+      - name: Package Windows Standalone (Zip)
+        run: |
+          # Create a zip containing the binary and resources, excluding the installer
+          # Using 7z for better reliability and exclusion handling
+          7z a -tzip "build/ADBKit-windows-standalone.zip" "./build/bin/*" -xr!"*installer.exe"
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: |
+            build/ADBKit-windows-standalone.zip
+            build/bin/*-installer.exe
+
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config \
+            libgtk-3-dev libwebkit2gtk-4.0-dev \
+            libayatana-appindicator3-dev \
+            upx
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Install NFPM
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install frontend dependencies
+        run: pnpm install
+        working-directory: frontend
+
+      - name: Build Linux Binary
+        run: wails build -clean -upx
+
+      - name: Create Linux Packages (Deb, RPM)
+        run: |
+          # Prepare assets
+          if [ ! -f build/appicon.png ] && [ -f appicon.png ]; then
+            cp appicon.png build/appicon.png
+          fi
+
+          # Manually copy external binaries (resources)
+          # Ensure bin/linux exists in the build output for packaging
+          mkdir -p build/bin/bin
+          if [ -d "bin/linux" ]; then
+            cp -r bin/linux build/bin/bin/
+          fi
+
+          # Create .desktop file
+          cat > build/ADBKit.desktop <<EOF
+          [Desktop Entry]
+          Type=Application
+          Name=ADBKit
+          Comment=A simple, modern GUI for ADB and Fastboot.
+          Exec=/usr/bin/adbkit
+          Icon=adbkit
+          Categories=Utility;
+          EOF
+
+          # Create nfpm.yaml
+          cat > nfpm.yaml <<EOF
+          name: "adbkit"
+          arch: "amd64"
+          platform: "linux"
+          version: "1.1.0"
+          section: "utils"
+          priority: "optional"
+          maintainer: "Drenzzz <realdrenzzz@gmail.com>"
+          description: "A simple, modern GUI for ADB and Fastboot."
+          vendor: "Drenzzz"
+          homepage: "https://github.com/Drenzzz/adb-gui-kit"
+          license: "MIT"
+          contents:
+            - src: "build/bin/ADBKit"
+              dst: "/opt/adbkit/ADBKit"
+            - src: "build/appicon.png"
+              dst: "/usr/share/icons/hicolor/256x256/apps/adbkit.png"
+            - src: "build/ADBKit.desktop"
+              dst: "/usr/share/applications/adbkit.desktop"
+            - src: "build/bin/bin/"
+              dst: "/opt/adbkit/bin/"
+            - src: "/opt/adbkit/ADBKit"
+              dst: "/usr/bin/adbkit"
+              type: "symlink"
+          depends:
+            - libgtk-3-0
+            - libwebkit2gtk-4.0-37
+          EOF
+
+          # Run NFPM
+          nfpm pkg --packager deb --target build/bin/
+          nfpm pkg --packager rpm --target build/bin/
+
+      - name: Build AppImage
+        run: |
+          # Download linuxdeploy
+          wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+
+          # Prepare AppDir structure
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+
+          # Copy binary
+          cp build/bin/ADBKit AppDir/usr/bin/
+
+          # Copy Resources (bin/linux) to AppDir
+          # Wails copies resources to build/bin/bin/linux (based on wails.json structure)
+          # We copy the whole 'bin' folder from build/bin to AppDir/usr/bin/
+          if [ -d "build/bin/bin" ]; then
+            cp -r build/bin/bin AppDir/usr/bin/
+          fi
+
+          # Copy .desktop file (created in previous step)
+          cp build/ADBKit.desktop AppDir/usr/share/applications/ADBKit.desktop
+          # Ensure Exec path in AppImage is correct (relative to AppDir/usr/bin is handled by AppRun, but usually Exec=ADBKit is enough)
+          # We need to patch the Exec line for AppImage because it shouldn't be /usr/bin/adbkit
+          sed -i 's|Exec=/usr/bin/adbkit|Exec=ADBKit|g' AppDir/usr/share/applications/ADBKit.desktop
+
+          # Copy Icon
+          if [ -f build/appicon.png ]; then
+            cp build/appicon.png AppDir/usr/share/icons/hicolor/256x256/apps/adbkit.png
+          fi
+
+          # Generate AppImage
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
+
+          # Move generated AppImage to build/bin
+          mv ADBKit-*.AppImage build/bin/
+
+      - name: Package Linux Standalone (Tarball)
+        run: |
+          # Create tarball for standalone binary + resources
+          cd build/bin
+          if [ -d "bin" ]; then
+            tar -czvf ../ADBKit-linux-standalone.tar.gz ADBKit bin
+          else
+            tar -czvf ../ADBKit-linux-standalone.tar.gz ADBKit
+          fi
+          cd ../..
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: |
+            build/ADBKit-linux-standalone.tar.gz
+            build/bin/*.deb
+            build/bin/*.rpm
+            build/bin/*.AppImage
