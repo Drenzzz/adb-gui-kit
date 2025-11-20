@@ -17,15 +17,7 @@ interface ShellTerminalCardProps {
   scrollAreaRef: React.RefObject<HTMLDivElement>;
 }
 
-export function ShellTerminalCard({
-  command,
-  onCommandChange,
-  onKeyDown,
-  isLoading,
-  history,
-  onClearLog,
-  scrollAreaRef,
-}: ShellTerminalCardProps) {
+export function ShellTerminalCard({ command, onCommandChange, onKeyDown, isLoading, history, onClearLog, scrollAreaRef }: ShellTerminalCardProps) {
   return (
     <Card className="flex flex-1 flex-col overflow-hidden">
       <CardHeader className="flex flex-row items-start justify-between">
@@ -34,55 +26,32 @@ export function ShellTerminalCard({
             <Terminal />
             Universal Terminal
           </CardTitle>
-          <CardDescription>
-            Run 'adb', 'adb shell', or 'fastboot' commands directly.
-          </CardDescription>
+          <CardDescription>Run 'adb', 'adb shell', or 'fastboot' commands directly.</CardDescription>
         </div>
 
-        <Button
-          variant="destructive"
-          size="sm"
-          className="ml-4"
-          onClick={onClearLog}
-        >
+        <Button variant="destructive" size="sm" className="ml-4" onClick={onClearLog}>
           <Trash2 className="mr-2 h-4 w-4" />
           Clear Log
         </Button>
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden p-4 pt-0">
-        <ScrollArea
-          className="flex-1 rounded-md border bg-muted/50"
-          ref={scrollAreaRef}
-        >
+        <ScrollArea className="flex-1 rounded-md border bg-muted/50" ref={scrollAreaRef}>
           <div className="p-4">
             <pre className="whitespace-pre-wrap break-words font-mono text-sm">
               {history.length === 0 ? (
                 <span className="text-muted-foreground">
                   Welcome. Type your command below.
                   {"\n"}Examples:
-                  {"\n"}  adb devices
-                  {"\n"}  adb shell ls /sdcard/
-                  {"\n"}  fastboot devices
+                  {"\n"} adb devices
+                  {"\n"} adb shell ls /sdcard/
+                  {"\n"} fastboot devices
                 </span>
               ) : (
                 history.map((entry, index) => (
                   <div key={index} className="flex gap-2">
-                    <span
-                      className={cn(
-                        "flex-shrink-0",
-                        entry.type === "command"
-                          ? "text-primary"
-                          : "text-muted-foreground"
-                      )}
-                    >
-                      {entry.type === "command" ? "$" : ">"}
-                    </span>
-                    <span
-                      className={cn(entry.type === "error" && "text-destructive")}
-                    >
-                      {entry.text}
-                    </span>
+                    <span className={cn("flex-shrink-0", entry.type === "command" ? "text-primary" : "text-muted-foreground")}>{entry.type === "command" ? "$" : ">"}</span>
+                    <span className={cn(entry.type === "error" && "text-destructive")}>{entry.text}</span>
                   </div>
                 ))
               )}

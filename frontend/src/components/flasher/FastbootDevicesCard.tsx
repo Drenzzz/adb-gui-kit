@@ -13,12 +13,7 @@ interface FastbootDevicesCardProps {
   onRefresh: () => void;
 }
 
-export function FastbootDevicesCard({
-  devices,
-  isRefreshing,
-  error,
-  onRefresh,
-}: FastbootDevicesCardProps) {
+export function FastbootDevicesCard({ devices, isRefreshing, error, onRefresh }: FastbootDevicesCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -26,44 +21,24 @@ export function FastbootDevicesCard({
           <Smartphone />
           Fastboot Devices
         </CardTitle>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onRefresh}
-          disabled={isRefreshing}
-        >
-          {isRefreshing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
-          )}
+        <Button variant="ghost" size="icon" onClick={onRefresh} disabled={isRefreshing}>
+          {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
         </Button>
       </CardHeader>
       <CardContent>
         {devices.length === 0 ? (
-          <p className="text-muted-foreground">
-            {isRefreshing
-              ? "Scanning for devices..."
-              : "No fastboot device detected. Put your device in fastboot/bootloader mode."}
-          </p>
+          <p className="text-muted-foreground">{isRefreshing ? "Scanning for devices..." : "No fastboot device detected. Put your device in fastboot/bootloader mode."}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {devices.map((device) => (
-              <div
-                key={device.Serial}
-                className="flex items-center justify-between rounded-lg bg-muted p-3"
-              >
+              <div key={device.Serial} className="flex items-center justify-between rounded-lg bg-muted p-3">
                 <span className="font-mono">{device.Serial}</span>
-                <span className="font-semibold text-blue-500">
-                  {device.Status}
-                </span>
+                <span className="font-semibold text-blue-500">{device.Status}</span>
               </div>
             ))}
           </div>
         )}
-        {error && (
-          <p className="mt-2 text-sm text-destructive">{error}</p>
-        )}
+        {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
       </CardContent>
     </Card>
   );

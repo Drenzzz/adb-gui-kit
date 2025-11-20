@@ -1,19 +1,7 @@
 import React from "react";
 import { backend } from "../../../wailsjs/go/models";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { File, Folder, Loader2 } from "lucide-react";
@@ -32,17 +20,7 @@ interface DirectoryContentsCardProps {
   onRowDoubleClick: (file: FileEntry) => void;
 }
 
-export function DirectoryContentsCard({
-  visibleFiles,
-  fileList,
-  isLoading,
-  allVisibleSelected,
-  onToggleSelectAll,
-  selectedFileNames,
-  onSelectFile,
-  onRowClick,
-  onRowDoubleClick,
-}: DirectoryContentsCardProps) {
+export function DirectoryContentsCard({ visibleFiles, fileList, isLoading, allVisibleSelected, onToggleSelectAll, selectedFileNames, onSelectFile, onRowClick, onRowDoubleClick }: DirectoryContentsCardProps) {
   return (
     <Card className="flex flex-1 flex-col overflow-hidden border border-border/60 shadow-xl">
       <CardHeader className="space-y-1">
@@ -59,13 +37,7 @@ export function DirectoryContentsCard({
                 <TableHeader className="sticky top-0 z-10 bg-muted/60 backdrop-blur">
                   <TableRow>
                     <TableHead className="w-[50px]">
-                      <Checkbox
-                        checked={allVisibleSelected}
-                        onCheckedChange={(checked) =>
-                          onToggleSelectAll(Boolean(checked))
-                        }
-                        aria-label="Select all"
-                      />
+                      <Checkbox checked={allVisibleSelected} onCheckedChange={(checked) => onToggleSelectAll(Boolean(checked))} aria-label="Select all" />
                     </TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                     <TableHead>Name</TableHead>
@@ -84,39 +56,18 @@ export function DirectoryContentsCard({
                   ) : visibleFiles.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="h-24 text-center">
-                        {fileList.length === 0
-                          ? "This directory is empty."
-                          : "No files match your search/filter."}
+                        {fileList.length === 0 ? "This directory is empty." : "No files match your search/filter."}
                       </TableCell>
                     </TableRow>
                   ) : (
                     visibleFiles.map((file) => {
                       const isSelected = selectedFileNames.includes(file.Name);
                       return (
-                        <TableRow
-                          key={file.Name}
-                          onClick={() => onRowClick(file)}
-                          onDoubleClick={() => onRowDoubleClick(file)}
-                          data-state={isSelected ? "selected" : ""}
-                          className="cursor-pointer"
-                        >
+                        <TableRow key={file.Name} onClick={() => onRowClick(file)} onDoubleClick={() => onRowDoubleClick(file)} data-state={isSelected ? "selected" : ""} className="cursor-pointer">
                           <TableCell>
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={(checked) =>
-                                onSelectFile(file.Name, Boolean(checked))
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                              aria-label="Select row"
-                            />
+                            <Checkbox checked={isSelected} onCheckedChange={(checked) => onSelectFile(file.Name, Boolean(checked))} onClick={(e) => e.stopPropagation()} aria-label="Select row" />
                           </TableCell>
-                          <TableCell>
-                            {file.Type === "Directory" ? (
-                              <Folder className="h-4 w-4 text-blue-500" />
-                            ) : (
-                              <File className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </TableCell>
+                          <TableCell>{file.Type === "Directory" ? <Folder className="h-4 w-4 text-blue-500" /> : <File className="h-4 w-4 text-muted-foreground" />}</TableCell>
                           <TableCell className="font-medium">{file.Name}</TableCell>
                           <TableCell>{file.Size}</TableCell>
                           <TableCell>{file.Date}</TableCell>

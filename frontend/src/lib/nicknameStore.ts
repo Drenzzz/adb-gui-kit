@@ -1,5 +1,4 @@
-const NICKNAME_STORAGE_KEY = 'adb-kit-nicknames';
-
+const NICKNAME_STORAGE_KEY = "adb-kit-nicknames";
 
 function getNicknames(): Record<string, string> {
   try {

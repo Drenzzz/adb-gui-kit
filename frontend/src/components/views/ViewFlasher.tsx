@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'; 
-import { WipeData, FlashPartition, SelectImageFile, GetFastbootDevices, SelectZipFile, SideloadPackage } from '../../../wailsjs/go/backend/App';
-import { backend } from '../../../wailsjs/go/models';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { WipeData, FlashPartition, SelectImageFile, GetFastbootDevices, SelectZipFile, SideloadPackage } from "../../../wailsjs/go/backend/App";
+import { backend } from "../../../wailsjs/go/models";
 
 import { toast } from "sonner";
 import { FastbootDevicesCard } from "@/components/flasher/FastbootDevicesCard";
@@ -15,10 +15,10 @@ const sanitizeFastbootDevices = (devices: Device[] | null | undefined): Device[]
   }
 
   return devices
-    .filter((device): device is Device => !!device && typeof device.Serial === 'string')
+    .filter((device): device is Device => !!device && typeof device.Serial === "string")
     .map((device) => ({
       Serial: device.Serial,
-      Status: device.Status ?? 'fastboot',
+      Status: device.Status ?? "fastboot",
     }));
 };
 
@@ -37,9 +37,9 @@ const areDeviceListsEqual = (a: Device[], b: Device[]): boolean => {
 };
 
 export function ViewFlasher({ activeView }: { activeView: string }) {
-  const [partition, setPartition] = useState('');
-  const [filePath, setFilePath] = useState('');
-  const [sideloadFilePath, setSideloadFilePath] = useState('');
+  const [partition, setPartition] = useState("");
+  const [filePath, setFilePath] = useState("");
+  const [sideloadFilePath, setSideloadFilePath] = useState("");
   const [isFlashing, setIsFlashing] = useState(false);
   const [isWiping, setIsWiping] = useState(false);
   const [isSideloading, setIsSideloading] = useState(false);
@@ -65,9 +65,7 @@ export function ViewFlasher({ activeView }: { activeView: string }) {
       return;
     }
     fastbootDevicesRef.current = devices;
-    setFastbootDevices((current) =>
-      areDeviceListsEqual(current, devices) ? current : devices
-    );
+    setFastbootDevices((current) => (areDeviceListsEqual(current, devices) ? current : devices));
   }, []);
 
   const refreshFastbootDevices = useCallback(
@@ -95,10 +93,7 @@ export function ViewFlasher({ activeView }: { activeView: string }) {
           applyFastbootDevices(sanitizedDevices);
         } else {
           emptyPollCountRef.current += 1;
-          if (
-            fastbootDevicesRef.current.length === 0 ||
-            emptyPollCountRef.current >= 2
-          ) {
+          if (fastbootDevicesRef.current.length === 0 || emptyPollCountRef.current >= 2) {
             applyFastbootDevices([]);
           }
         }
@@ -129,7 +124,7 @@ export function ViewFlasher({ activeView }: { activeView: string }) {
   }, [fastbootDevices]);
 
   useEffect(() => {
-    if (activeView !== 'flasher') {
+    if (activeView !== "flasher") {
       return;
     }
 
@@ -146,8 +141,8 @@ export function ViewFlasher({ activeView }: { activeView: string }) {
 
   const handleSelectFile = async () => {
     try {
-      const selectedPath = await SelectImageFile(); 
-      
+      const selectedPath = await SelectImageFile();
+
       if (selectedPath) {
         setFilePath(selectedPath);
         toast.info(`File selected: ${selectedPath.split(/[/\\]/).pop()}`);
@@ -235,22 +230,9 @@ export function ViewFlasher({ activeView }: { activeView: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <FastbootDevicesCard
-        devices={fastbootDevices}
-        isRefreshing={isRefreshingFastboot}
-        error={fastbootError}
-        onRefresh={() => refreshFastbootDevices()}
-      />
+      <FastbootDevicesCard devices={fastbootDevices} isRefreshing={isRefreshingFastboot} error={fastbootError} onRefresh={() => refreshFastbootDevices()} />
 
-      <FlashPartitionCard
-        partition={partition}
-        onPartitionChange={setPartition}
-        filePath={filePath}
-        onSelectFile={handleSelectFile}
-        onFlash={handleFlash}
-        isFlashing={isFlashing}
-        canFlash={fastbootDevices.length > 0}
-      />
+      <FlashPartitionCard partition={partition} onPartitionChange={setPartition} filePath={filePath} onSelectFile={handleSelectFile} onFlash={handleFlash} isFlashing={isFlashing} canFlash={fastbootDevices.length > 0} />
 
       <RecoveryActionsCard
         sideloadFilePath={sideloadFilePath}

@@ -2,13 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import "@/styles/global.css";
-import {
-  LayoutDashboard,
-  Box,
-  FolderOpen,
-  Terminal,
-  Settings,
-} from "lucide-react";
+import { LayoutDashboard, Box, FolderOpen, Terminal, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,7 +15,7 @@ import { ViewUtilities } from "./views/ViewUtilities";
 import { Toaster } from "@/components/ui/sonner";
 
 import { ThemeProvider } from "./ThemeProvider";
-import { ViewShell } from './views/ViewShell';
+import { ViewShell } from "./views/ViewShell";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { LoadingOverlay } from "@/components/layout/LoadingOverlay";
 
@@ -31,7 +25,7 @@ const VIEWS = {
   FILES: "files",
   FLASHER: "flasher",
   UTILS: "utils",
-  SHELL: 'shell',
+  SHELL: "shell",
 } as const;
 
 type ViewType = (typeof VIEWS)[keyof typeof VIEWS];
@@ -45,7 +39,7 @@ const pageVariants = {
 const LOADING_DURATION = 750;
 
 export type HistoryEntry = {
-  type: 'command' | 'result' | 'error';
+  type: "command" | "result" | "error";
   text: string;
 };
 
@@ -79,19 +73,11 @@ export function MainLayout() {
       case VIEWS.UTILS:
         return <ViewUtilities activeView={activeView} />;
       case VIEWS.SHELL:
-        return (
-          <ViewShell 
-            activeView={activeView} 
-            history={shellHistory}
-            setHistory={setShellHistory}
-            commandHistory={shellCommandHistory}
-            setCommandHistory={setShellCommandHistory}
-          />
-        );
+        return <ViewShell activeView={activeView} history={shellHistory} setHistory={setShellHistory} commandHistory={shellCommandHistory} setCommandHistory={setShellCommandHistory} />;
       default:
         return <ViewDashboard activeView={activeView} />;
     }
-  };  
+  };
 
   useEffect(() => {
     let animationFrame: number;
@@ -102,10 +88,7 @@ export function MainLayout() {
         startTime = timestamp;
       }
       const elapsed = timestamp - startTime;
-      const nextProgress = Math.min(
-        100,
-        (elapsed / LOADING_DURATION) * 100
-      );
+      const nextProgress = Math.min(100, (elapsed / LOADING_DURATION) * 100);
       setProgress(nextProgress);
 
       if (elapsed < LOADING_DURATION) {
@@ -124,31 +107,13 @@ export function MainLayout() {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <TooltipProvider delayDuration={0}>
         <LoadingOverlay isLoading={isLoading} progress={progress} />
-        <div
-          className={cn(
-            "relative flex h-screen bg-background text-foreground overflow-hidden",
-            isLoading ? "opacity-0" : "opacity-100 transition-opacity duration-500 ease-in-out"
-          )}
-        >
-          <AppSidebar
-            navItems={NAV_ITEMS}
-            activeView={activeView}
-            isCollapsed={isCollapsed}
-            onToggleCollapse={() => setIsCollapsed((prev) => !prev)}
-            onSelectView={(id) => setActiveView(id as ViewType)}
-          />
+        <div className={cn("relative flex h-screen bg-background text-foreground overflow-hidden", isLoading ? "opacity-0" : "opacity-100 transition-opacity duration-500 ease-in-out")}>
+          <AppSidebar navItems={NAV_ITEMS} activeView={activeView} isCollapsed={isCollapsed} onToggleCollapse={() => setIsCollapsed((prev) => !prev)} onSelectView={(id) => setActiveView(id as ViewType)} />
 
           <main className="flex-1 overflow-auto custom-scroll">
             <div className="min-h-full p-6">
               <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeView}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  variants={pageVariants}
-                  transition={{ duration: 0.2 }}
-                >
+                <motion.div key={activeView} initial="hidden" animate="visible" exit="exit" variants={pageVariants} transition={{ duration: 0.2 }}>
                   {renderActiveView()}
                 </motion.div>
               </AnimatePresence>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import path from 'path-browserify';
+import React, { useState, useEffect, useMemo } from "react";
+import path from "path-browserify";
 
 import {
   ListFiles,
@@ -14,53 +14,26 @@ import {
   PullMultipleFiles,
   SelectFilesToPush,
   SelectFoldersToPush,
-} from '../../../wailsjs/go/backend/App';
-import { backend } from '../../../wailsjs/go/models';
+} from "../../../wailsjs/go/backend/App";
+import { backend } from "../../../wailsjs/go/models";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-import {
-  Loader2,
-  Upload,
-  Download,
-  FolderUp,
-  Trash2,
-  AlertTriangle,
-  Pencil,
-  FolderPlus, 
-} from 'lucide-react';
-import { ExplorerOverviewCard } from '@/components/fileExplorer/ExplorerOverviewCard';
-import { DirectoryContentsCard } from '@/components/fileExplorer/DirectoryContentsCard';
-import type { ExplorerActionItem } from '@/components/fileExplorer/ExplorerOverviewCard';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Loader2, Upload, Download, FolderUp, Trash2, AlertTriangle, Pencil, FolderPlus } from "lucide-react";
+import { ExplorerOverviewCard } from "@/components/fileExplorer/ExplorerOverviewCard";
+import { DirectoryContentsCard } from "@/components/fileExplorer/DirectoryContentsCard";
+import type { ExplorerActionItem } from "@/components/fileExplorer/ExplorerOverviewCard";
 
 type FileEntry = backend.FileEntry;
 
 export function ViewFileExplorer({ activeView }: { activeView: string }) {
   const [fileList, setFileList] = useState<FileEntry[]>([]);
-  const [currentPath, setCurrentPath] = useState('/sdcard/');
+  const [currentPath, setCurrentPath] = useState("/sdcard/");
   const [isLoading, setIsLoading] = useState(false);
 
   const [isPushingFile, setIsPushingFile] = useState(false);
@@ -70,28 +43,28 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
 
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newFolderName, setNewFolderName] = useState('');
+  const [newName, setNewName] = useState("");
+  const [newFolderName, setNewFolderName] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const [selectedFileNames, setSelectedFileNames] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<'name' | 'date' | 'size'>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState<"name" | "date" | "size">("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     if (isRenameOpen && selectedFileNames.length === 1) {
       setNewName(selectedFileNames[0]);
     } else {
-      setNewName('');
+      setNewName("");
     }
   }, [isRenameOpen, selectedFileNames]);
 
   useEffect(() => {
-    if (activeView === 'files') {
+    if (activeView === "files") {
       loadFiles(currentPath);
     }
   }, [activeView]);
@@ -108,15 +81,15 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
         return;
       }
       files.sort((a, b) => {
-        if (a.Type === 'Directory' && b.Type !== 'Directory') return -1;
-        if (a.Type !== 'Directory' && b.Type === 'Directory') return 1;
+        if (a.Type === "Directory" && b.Type !== "Directory") return -1;
+        if (a.Type !== "Directory" && b.Type === "Directory") return 1;
         return a.Name.localeCompare(b.Name);
       });
       setFileList(files);
       setCurrentPath(path);
     } catch (error) {
-      console.error('Failed to list files:', error);
-      toast.error('Failed to list files', { description: String(error) });
+      console.error("Failed to list files:", error);
+      toast.error("Failed to list files", { description: String(error) });
       setCurrentPath(currentPath);
     }
     setIsLoading(false);
@@ -128,15 +101,15 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
   };
 
   const handleRowDoubleClick = (file: FileEntry) => {
-    if (file.Type === 'Directory') {
-      const newPath = path.posix.join(currentPath, file.Name) + '/';
+    if (file.Type === "Directory") {
+      const newPath = path.posix.join(currentPath, file.Name) + "/";
       loadFiles(newPath);
     }
   };
 
   const handleBackClick = () => {
-    if (currentPath === '/') return;
-    const newPath = path.posix.join(currentPath, '..') + '/';
+    if (currentPath === "/") return;
+    const newPath = path.posix.join(currentPath, "..") + "/";
     loadFiles(newPath);
   };
 
@@ -145,39 +118,25 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
     error: string;
   };
 
-  const getBasename = (fullPath: string) =>
-    fullPath.replace(/\\/g, '/').split('/').pop() || fullPath;
+  const getBasename = (fullPath: string) => fullPath.replace(/\\/g, "/").split("/").pop() || fullPath;
 
-  const showBatchToast = (
-    toastId: string | number,
-    entityLabel: string,
-    total: number,
-    failures: BatchFailure[]
-  ) => {
+  const showBatchToast = (toastId: string | number, entityLabel: string, total: number, failures: BatchFailure[]) => {
     if (total === 0) {
       return;
     }
 
     if (failures.length === 0) {
-      toast.success(
-        `Imported ${total} ${entityLabel}${total > 1 ? 's' : ''}`,
-        { id: toastId }
-      );
+      toast.success(`Imported ${total} ${entityLabel}${total > 1 ? "s" : ""}`, { id: toastId });
       return;
     }
 
     const description = failures
       .slice(0, 5)
       .map((item) => `${item.name}: ${item.error}`)
-      .join('\n');
+      .join("\n");
 
     const successCount = total - failures.length;
-    const title =
-      failures.length === total
-        ? `Failed to import ${entityLabel}${total > 1 ? 's' : ''}`
-        : `Imported ${successCount}/${total} ${entityLabel}${
-            successCount === 1 ? '' : 's'
-          }`;
+    const title = failures.length === total ? `Failed to import ${entityLabel}${total > 1 ? "s" : ""}` : `Imported ${successCount}/${total} ${entityLabel}${successCount === 1 ? "" : "s"}`;
 
     toast.error(title, {
       id: toastId,
@@ -195,16 +154,8 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
         return;
       }
 
-      const description =
-        localPaths.length === 1
-          ? `To: ${path.posix.join(currentPath, getBasename(localPaths[0]))}`
-          : undefined;
-      toastId = toast.loading(
-        localPaths.length === 1
-          ? `Pushing ${getBasename(localPaths[0])}...`
-          : `Pushing ${localPaths.length} files...`,
-        { description }
-      );
+      const description = localPaths.length === 1 ? `To: ${path.posix.join(currentPath, getBasename(localPaths[0]))}` : undefined;
+      toastId = toast.loading(localPaths.length === 1 ? `Pushing ${getBasename(localPaths[0])}...` : `Pushing ${localPaths.length} files...`, { description });
 
       const failures: BatchFailure[] = [];
       for (const localPath of localPaths) {
@@ -213,22 +164,22 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
         try {
           await PushFile(localPath, remotePath);
         } catch (error) {
-          console.error('Import file error:', error);
+          console.error("Import file error:", error);
           failures.push({ name: fileName, error: String(error) });
         }
       }
 
-      showBatchToast(toastId, 'file', localPaths.length, failures);
+      showBatchToast(toastId, "file", localPaths.length, failures);
       loadFiles(currentPath);
     } catch (error) {
-      console.error('Import file error:', error);
+      console.error("Import file error:", error);
       if (toastId) {
-        toast.error('File Import Failed', {
+        toast.error("File Import Failed", {
           description: String(error),
           id: toastId,
         });
       } else {
-        toast.error('File Import Failed', { description: String(error) });
+        toast.error("File Import Failed", { description: String(error) });
       }
     } finally {
       setIsPushingFile(false);
@@ -244,15 +195,9 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
         return;
       }
 
-      toastId = toast.loading(
-        localFolders.length === 1
-          ? `Pushing folder ${getBasename(localFolders[0])}...`
-          : `Pushing ${localFolders.length} folders...`,
-        {
-          description:
-            localFolders.length === 1 ? `To: ${currentPath}` : undefined,
-        }
-      );
+      toastId = toast.loading(localFolders.length === 1 ? `Pushing folder ${getBasename(localFolders[0])}...` : `Pushing ${localFolders.length} folders...`, {
+        description: localFolders.length === 1 ? `To: ${currentPath}` : undefined,
+      });
 
       const failures: BatchFailure[] = [];
       for (const localFolderPath of localFolders) {
@@ -260,22 +205,22 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
         try {
           await PushFile(localFolderPath, currentPath);
         } catch (error) {
-          console.error('Import folder error:', error);
+          console.error("Import folder error:", error);
           failures.push({ name: folderName, error: String(error) });
         }
       }
 
-      showBatchToast(toastId, 'folder', localFolders.length, failures);
+      showBatchToast(toastId, "folder", localFolders.length, failures);
       loadFiles(currentPath);
     } catch (error) {
-      console.error('Import folder error:', error);
+      console.error("Import folder error:", error);
       if (toastId) {
-        toast.error('Folder Import Failed', {
+        toast.error("Folder Import Failed", {
           description: String(error),
           id: toastId,
         });
       } else {
-        toast.error('Folder Import Failed', {
+        toast.error("Folder Import Failed", {
           description: String(error),
         });
       }
@@ -286,25 +231,21 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
 
   const handleMultiExport = async () => {
     if (selectedFileNames.length === 0) {
-      toast.error('No files selected to export.');
+      toast.error("No files selected to export.");
       return;
     }
 
     setIsPulling(true);
-    const remotePaths = selectedFileNames.map((name) =>
-      path.posix.join(currentPath, name)
-    );
-    const toastId = toast.loading(
-      `Exporting ${selectedFileNames.length} items...`
-    );
+    const remotePaths = selectedFileNames.map((name) => path.posix.join(currentPath, name));
+    const toastId = toast.loading(`Exporting ${selectedFileNames.length} items...`);
 
     try {
       const output = await PullMultipleFiles(remotePaths);
 
-      if (output.includes('cancelled by user')) {
-        toast.info('Export Cancelled', { id: toastId });
+      if (output.includes("cancelled by user")) {
+        toast.info("Export Cancelled", { id: toastId });
       } else {
-        toast.success('Batch Export Complete', {
+        toast.success("Batch Export Complete", {
           description: output,
           id: toastId,
           duration: 8000,
@@ -312,8 +253,8 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
       }
       setSelectedFileNames([]);
     } catch (error) {
-      console.error('Batch export error:', error);
-      toast.error('Batch Export Failed', {
+      console.error("Batch export error:", error);
+      toast.error("Batch Export Failed", {
         description: String(error),
         id: toastId,
       });
@@ -323,21 +264,17 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
 
   const handleMultiDelete = async () => {
     if (selectedFileNames.length === 0) {
-      toast.error('No files selected to delete.');
+      toast.error("No files selected to delete.");
       return;
     }
 
     setIsDeleting(true);
-    const fullPaths = selectedFileNames.map((name) =>
-      path.posix.join(currentPath, name)
-    );
-    const toastId = toast.loading(
-      `Deleting ${selectedFileNames.length} items...`
-    );
+    const fullPaths = selectedFileNames.map((name) => path.posix.join(currentPath, name));
+    const toastId = toast.loading(`Deleting ${selectedFileNames.length} items...`);
 
     try {
       const output = await DeleteMultipleFiles(fullPaths);
-      toast.success('Batch Delete Complete', {
+      toast.success("Batch Delete Complete", {
         description: output,
         id: toastId,
         duration: 8000,
@@ -345,8 +282,8 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
       loadFiles(currentPath);
       setSelectedFileNames([]);
     } catch (error) {
-      console.error('Batch delete error:', error);
-      toast.error('Batch Delete Failed', {
+      console.error("Batch delete error:", error);
+      toast.error("Batch Delete Failed", {
         description: String(error),
         id: toastId,
       });
@@ -358,11 +295,11 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
 
   const handleRename = async () => {
     if (selectedFileNames.length !== 1) {
-      toast.error('Please select exactly one file to rename.');
+      toast.error("Please select exactly one file to rename.");
       return;
     }
-    if (!newName || newName.trim() === '') {
-      toast.error('New name cannot be empty.');
+    if (!newName || newName.trim() === "") {
+      toast.error("New name cannot be empty.");
       return;
     }
 
@@ -374,7 +311,7 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
 
     try {
       const output = await RenameFile(oldPath, newPath);
-      toast.success('Rename Successful', {
+      toast.success("Rename Successful", {
         description: output,
         id: toastId,
       });
@@ -382,8 +319,8 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
       loadFiles(currentPath);
       setSelectedFileNames([]);
     } catch (error) {
-      console.error('Rename error:', error);
-      toast.error('Rename Failed', {
+      console.error("Rename error:", error);
+      toast.error("Rename Failed", {
         description: String(error),
         id: toastId,
       });
@@ -393,8 +330,8 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
   };
 
   const handleCreateFolder = async () => {
-    if (!newFolderName || newFolderName.trim() === '') {
-      toast.error('Folder name cannot be empty.');
+    if (!newFolderName || newFolderName.trim() === "") {
+      toast.error("Folder name cannot be empty.");
       return;
     }
     setIsCreatingFolder(true);
@@ -402,16 +339,16 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
     const toastId = toast.loading(`Creating folder ${newFolderName}...`);
     try {
       const output = await CreateFolder(fullPath);
-      toast.success('Folder Created', {
+      toast.success("Folder Created", {
         description: output,
         id: toastId,
       });
       setIsCreateFolderOpen(false);
-      setNewFolderName('');
+      setNewFolderName("");
       loadFiles(currentPath);
     } catch (error) {
-      console.error('Create folder error:', error);
-      toast.error('Create Folder Failed', {
+      console.error("Create folder error:", error);
+      toast.error("Create Folder Failed", {
         description: String(error),
         id: toastId,
       });
@@ -423,52 +360,41 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
   const visibleFiles = useMemo(() => {
     const lowerSearch = searchTerm.trim().toLowerCase();
 
-    const filtered = fileList.filter((file) =>
-      lowerSearch ? file.Name.toLowerCase().includes(lowerSearch) : true
-    );
+    const filtered = fileList.filter((file) => (lowerSearch ? file.Name.toLowerCase().includes(lowerSearch) : true));
 
     return filtered.sort((a, b) => {
-      if (a.Type === 'Directory' && b.Type !== 'Directory') return -1;
-      if (a.Type !== 'Directory' && b.Type === 'Directory') return 1;
+      if (a.Type === "Directory" && b.Type !== "Directory") return -1;
+      if (a.Type !== "Directory" && b.Type === "Directory") return 1;
 
       let comparison = 0;
 
-      if (sortField === 'name') {
+      if (sortField === "name") {
         comparison = a.Name.localeCompare(b.Name);
-      } else if (sortField === 'date') {
-        const dateA = `${a.Date ?? ''} ${a.Time ?? ''}`.trim();
-        const dateB = `${b.Date ?? ''} ${b.Time ?? ''}`.trim();
+      } else if (sortField === "date") {
+        const dateA = `${a.Date ?? ""} ${a.Time ?? ""}`.trim();
+        const dateB = `${b.Date ?? ""} ${b.Time ?? ""}`.trim();
         comparison = dateA.localeCompare(dateB);
-      } else if (sortField === 'size') {
-        const sizeA = parseInt(a.Size || '0', 10);
-        const sizeB = parseInt(b.Size || '0', 10);
+      } else if (sortField === "size") {
+        const sizeA = parseInt(a.Size || "0", 10);
+        const sizeB = parseInt(b.Size || "0", 10);
         comparison = sizeA - sizeB;
       }
 
-      return sortDirection === 'asc' ? comparison : -comparison;
+      return sortDirection === "asc" ? comparison : -comparison;
     });
   }, [fileList, searchTerm, sortField, sortDirection]);
 
-  const allVisibleSelected =
-    visibleFiles.length > 0 &&
-    visibleFiles.every((file) => selectedFileNames.includes(file.Name));
+  const allVisibleSelected = visibleFiles.length > 0 && visibleFiles.every((file) => selectedFileNames.includes(file.Name));
 
   const handleSelectFile = (fileName: string, checked: boolean) => {
     if (checked) {
-      setSelectedFileNames((prev) =>
-        prev.includes(fileName) ? prev : [...prev, fileName]
-      );
+      setSelectedFileNames((prev) => (prev.includes(fileName) ? prev : [...prev, fileName]));
     } else {
-      setSelectedFileNames((prev) =>
-        prev.filter((name) => name !== fileName)
-      );
+      setSelectedFileNames((prev) => prev.filter((name) => name !== fileName));
     }
   };
 
-  const handleSelectAllFiles = (
-    checked: boolean,
-    targetList: FileEntry[] = fileList
-  ) => {
+  const handleSelectAllFiles = (checked: boolean, targetList: FileEntry[] = fileList) => {
     const targetNames = targetList.map((file) => file.Name);
     const targetSet = new Set(targetNames);
 
@@ -483,127 +409,99 @@ export function ViewFileExplorer({ activeView }: { activeView: string }) {
         return Array.from(merged);
       });
     } else {
-      setSelectedFileNames((prev) =>
-        prev.filter((name) => !targetSet.has(name))
-      );
+      setSelectedFileNames((prev) => prev.filter((name) => !targetSet.has(name)));
     }
   };
 
-const isBusy =
-    isLoading ||
-    isPushingFile ||
-    isPushingFolder ||
-    isPulling ||
-    isDeleting ||
-    isRenaming ||
-    isCreatingFolder;
+  const isBusy = isLoading || isPushingFile || isPushingFolder || isPulling || isDeleting || isRenaming || isCreatingFolder;
   const isExportDisabled = isPulling || selectedFileNames.length === 0;
   const isDeleteDisabled = isDeleting || selectedFileNames.length === 0;
   const isRenameDisabled = isRenaming || selectedFileNames.length !== 1;
   const selectedCount = selectedFileNames.length;
 
-  const explorerStats = useMemo(
-    () => {
-      const folderCount = fileList.filter((file) => file.Type === 'Directory').length;
-      const fileCount = Math.max(fileList.length - folderCount, 0);
-      return {
-        totalItems: fileList.length,
-        folderCount,
-        fileCount,
-      };
-    },
-    [fileList]
-  );
+  const explorerStats = useMemo(() => {
+    const folderCount = fileList.filter((file) => file.Type === "Directory").length;
+    const fileCount = Math.max(fileList.length - folderCount, 0);
+    return {
+      totalItems: fileList.length,
+      folderCount,
+      fileCount,
+    };
+  }, [fileList]);
 
   const actionItems: ExplorerActionItem[] = [
     {
-      key: 'import-file',
-      label: 'Import file',
+      key: "import-file",
+      label: "Import file",
       icon: Upload,
       onClick: handlePushFile,
       disabled: isBusy,
-      variant: 'outline',
+      variant: "outline",
     },
     {
-      key: 'import-folder',
-      label: 'Import folder',
+      key: "import-folder",
+      label: "Import folder",
       icon: FolderUp,
       onClick: handlePushFolder,
       disabled: isBusy,
-      variant: 'outline',
+      variant: "outline",
     },
     {
-      key: 'new-folder',
-      label: 'New folder',
+      key: "new-folder",
+      label: "New folder",
       icon: FolderPlus,
       onClick: () => setIsCreateFolderOpen(true),
       disabled: isBusy,
-      variant: 'default',
+      variant: "default",
     },
     {
-      key: 'rename',
-      label: 'Rename',
+      key: "rename",
+      label: "Rename",
       icon: Pencil,
       onClick: () => setIsRenameOpen(true),
       disabled: isRenameDisabled || isBusy,
-      variant: 'outline',
+      variant: "outline",
     },
     {
-      key: 'export',
+      key: "export",
       label: `Export (${selectedCount})`,
       icon: Download,
       onClick: handleMultiExport,
       disabled: isExportDisabled || isBusy,
-      variant: 'outline',
+      variant: "outline",
     },
     {
-      key: 'delete',
+      key: "delete",
       label: `Delete (${selectedCount})`,
       icon: Trash2,
       onClick: () => setIsDeleteOpen(true),
       disabled: isDeleteDisabled || isBusy,
-      variant: 'destructive',
+      variant: "destructive",
     },
   ];
 
   return (
     <>
-      <Dialog
-        open={isCreateFolderOpen}
-        onOpenChange={setIsCreateFolderOpen}
-      >
+      <Dialog open={isCreateFolderOpen} onOpenChange={setIsCreateFolderOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Create New Folder</DialogTitle>
-            <DialogDescription>
-              Enter a name for the new folder in {currentPath}
-            </DialogDescription>
+            <DialogDescription>Enter a name for the new folder in {currentPath}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="folder-name" className="text-right">
                 Name
               </Label>
-              <Input
-                id="folder-name"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                className="col-span-3"
-                placeholder="New Folder Name"
-              />
+              <Input id="folder-name" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} className="col-span-3" placeholder="New Folder Name" />
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsCreateFolderOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsCreateFolderOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleCreateFolder} disabled={isCreatingFolder}>
-              {isCreatingFolder && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {isCreatingFolder && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create
             </Button>
           </DialogFooter>
@@ -614,21 +512,14 @@ const isBusy =
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Rename</DialogTitle>
-            <DialogDescription>
-              Enter a new name for {selectedFileNames.length === 1 ? selectedFileNames[0] : 'the selected item'}
-            </DialogDescription>
+            <DialogDescription>Enter a new name for {selectedFileNames.length === 1 ? selectedFileNames[0] : "the selected item"}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="new-name" className="text-right">
                 New Name
               </Label>
-              <Input
-                id="new-name"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="col-span-3"
-              />
+              <Input id="new-name" value={newName} onChange={(e) => setNewName(e.target.value)} className="col-span-3" />
             </div>
           </div>
           <DialogFooter>
@@ -636,9 +527,7 @@ const isBusy =
               Cancel
             </Button>
             <Button onClick={handleRename} disabled={isRenaming}>
-              {isRenaming && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+              {isRenaming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Rename
             </Button>
           </DialogFooter>
@@ -655,24 +544,13 @@ const isBusy =
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete
               <br />
-              <span className="font-mono font-semibold text-foreground">
-                {selectedFileNames.length} selected item(s)
-              </span>
-              , including all contents if any are folders.
+              <span className="font-mono font-semibold text-foreground">{selectedFileNames.length} selected item(s)</span>, including all contents if any are folders.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className={buttonVariants({ variant: 'destructive' })}
-              onClick={handleMultiDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="mr-2 h-4 w-4" />
-              )}
+            <AlertDialogAction className={buttonVariants({ variant: "destructive" })} onClick={handleMultiDelete} disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
               Yes, Delete {selectedFileNames.length}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -691,11 +569,9 @@ const isBusy =
           sortField={sortField}
           onSortFieldChange={(value) => setSortField(value)}
           sortDirection={sortDirection}
-          onToggleSortDirection={() =>
-            setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-          }
+          onToggleSortDirection={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
           onBack={handleBackClick}
-          canGoBack={currentPath !== '/'}
+          canGoBack={currentPath !== "/"}
           onRefresh={() => loadFiles(currentPath)}
           actionItems={actionItems}
         />
@@ -705,9 +581,7 @@ const isBusy =
           fileList={fileList}
           isLoading={isLoading}
           allVisibleSelected={allVisibleSelected}
-          onToggleSelectAll={(checked) =>
-            handleSelectAllFiles(checked, visibleFiles)
-          }
+          onToggleSelectAll={(checked) => handleSelectAllFiles(checked, visibleFiles)}
           selectedFileNames={selectedFileNames}
           onSelectFile={handleSelectFile}
           onRowClick={handleRowClick}

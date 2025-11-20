@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
-import { GetDevices, GetDeviceInfo } from '../../../wailsjs/go/backend/App';
-import { backend } from '../../../wailsjs/go/models';
-import { DeviceListCard } from '../dashboard/DeviceListCard';
-import { WirelessAdbCard } from '../dashboard/WirelessAdbCard';
-import { DeviceInfoCard } from '../dashboard/DeviceInfoCard';
-
+import { GetDevices, GetDeviceInfo } from "../../../wailsjs/go/backend/App";
+import { backend } from "../../../wailsjs/go/models";
+import { DeviceListCard } from "../dashboard/DeviceListCard";
+import { WirelessAdbCard } from "../dashboard/WirelessAdbCard";
+import { DeviceInfoCard } from "../dashboard/DeviceInfoCard";
 
 type Device = backend.Device;
 type DeviceInfo = backend.DeviceInfo;
@@ -20,10 +19,10 @@ export function ViewDashboard({ activeView }: { activeView: string }) {
     setIsRefreshingDevices(true);
     try {
       const result = await GetDevices();
-      setDevices(result || []); 
+      setDevices(result || []);
     } catch (error) {
       console.error("Error refreshing devices:", error);
-      setDevices([]); 
+      setDevices([]);
     }
     setIsRefreshingDevices(false);
   };
@@ -33,7 +32,7 @@ export function ViewDashboard({ activeView }: { activeView: string }) {
       setDeviceInfo(null);
       return;
     }
-    
+
     setIsRefreshingInfo(true);
     try {
       const result = await GetDeviceInfo();
@@ -46,43 +45,30 @@ export function ViewDashboard({ activeView }: { activeView: string }) {
   };
 
   useEffect(() => {
-    if (activeView === 'dashboard') {
+    if (activeView === "dashboard") {
       refreshDevices();
     }
   }, [activeView]);
 
   useEffect(() => {
-    if (activeView === 'dashboard') {
+    if (activeView === "dashboard") {
       const interval = setInterval(() => {
         if (!isRefreshingDevices) {
           refreshDevices();
         }
-      }, 3000); 
-      
+      }, 3000);
+
       return () => clearInterval(interval);
     }
   }, [activeView, isRefreshingDevices]);
 
   return (
     <div className="flex flex-col gap-6">
-      <DeviceListCard
-        devices={devices}
-        isRefreshing={isRefreshingDevices}
-        onRefresh={refreshDevices}
-      />
+      <DeviceListCard devices={devices} isRefreshing={isRefreshingDevices} onRefresh={refreshDevices} />
 
-      <WirelessAdbCard
-        hasUsbDevice={devices.length > 0}
-        defaultIp={deviceInfo?.IPAddress}
-        onDevicesUpdated={refreshDevices}
-      />
+      <WirelessAdbCard hasUsbDevice={devices.length > 0} defaultIp={deviceInfo?.IPAddress} onDevicesUpdated={refreshDevices} />
 
-      <DeviceInfoCard
-        devices={devices}
-        deviceInfo={deviceInfo}
-        isRefreshing={isRefreshingInfo}
-        onRefresh={refreshInfo}
-      />
+      <DeviceInfoCard devices={devices} deviceInfo={deviceInfo} isRefreshing={isRefreshingInfo} onRefresh={refreshInfo} />
     </div>
   );
 }

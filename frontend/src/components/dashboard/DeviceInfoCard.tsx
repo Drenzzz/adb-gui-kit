@@ -2,21 +2,7 @@ import React from "react";
 import { backend } from "../../../wailsjs/go/models";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Battery,
-  Building,
-  Code,
-  Cpu,
-  Database,
-  Hash,
-  Info,
-  RefreshCw,
-  Server,
-  ShieldCheck,
-  Smartphone,
-  Tag,
-  Wifi,
-} from "lucide-react";
+import { Battery, Building, Code, Cpu, Database, Hash, Info, RefreshCw, Server, ShieldCheck, Smartphone, Tag, Wifi } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -30,12 +16,7 @@ interface DeviceInfoCardProps {
   onRefresh: () => void;
 }
 
-export function DeviceInfoCard({
-  devices,
-  deviceInfo,
-  isRefreshing,
-  onRefresh,
-}: DeviceInfoCardProps) {
+export function DeviceInfoCard({ devices, deviceInfo, isRefreshing, onRefresh }: DeviceInfoCardProps) {
   const infoItems = [
     { icon: <Building size={18} />, label: "Brand", value: deviceInfo?.Brand },
     {
@@ -92,10 +73,7 @@ export function DeviceInfoCard({
       icon: <ShieldCheck size={18} />,
       label: "Root Status",
       value: deviceInfo?.RootStatus,
-      valueClassName:
-        deviceInfo?.RootStatus === "Yes"
-          ? "text-green-500 font-bold"
-          : "text-muted-foreground",
+      valueClassName: deviceInfo?.RootStatus === "Yes" ? "text-green-500 font-bold" : "text-muted-foreground",
     },
   ];
 
@@ -106,16 +84,8 @@ export function DeviceInfoCard({
           <Info />
           Device Info
         </CardTitle>
-        <Button
-          variant="default"
-          onClick={onRefresh}
-          disabled={isRefreshing || devices.length === 0}
-        >
-          {isRefreshing ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-2 h-4 w-4" />
-          )}
+        <Button variant="default" onClick={onRefresh} disabled={isRefreshing || devices.length === 0}>
+          {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
           Refresh Info
         </Button>
       </CardHeader>
@@ -149,9 +119,7 @@ function InfoItem({ icon, label, value, valueClassName }: InfoItemProps) {
       <div className="mr-3 text-primary">{icon}</div>
       <div>
         <div className="text-sm text-muted-foreground">{label}</div>
-        <div className={cn("font-semibold truncate", valueClassName)}>
-          {value ? value : "N/A"}
-        </div>
+        <div className={cn("font-semibold truncate", valueClassName)}>{value ? value : "N/A"}</div>
       </div>
     </div>
   );
