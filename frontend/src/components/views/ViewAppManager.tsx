@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-import { SelectApkFile, InstallPackage, UninstallPackage } from '../../../wailsjs/go/backend/App';
+import { SelectApkFile, InstallPackage, UninstallPackage, GetInstalledPackages } from '../../../wailsjs/go/backend/App';
+import { backend } from '../../../wailsjs/go/models';
 
 import {
   AlertDialog,
@@ -16,15 +17,38 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Loader2, Package, Trash2, FileUp } from "lucide-react";
+import { Loader2, Package, Trash2, FileUp, RefreshCw } from "lucide-react";
 
 export function ViewAppManager({ activeView }: { activeView: string }) {
   const [apkPath, setApkPath] = useState('');
   const [isInstalling, setIsInstalling] = useState(false);
 
-  const [packageName, setPackageName] = useState('');
+  const [packages, setPackages] = useState<backend.InstalledPackage[]>([]);
+  const [isLoadingPackages, setIsLoadingPackages] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState('');
   const [isUninstalling, setIsUninstalling] = useState(false);
+
+  useEffect(() => {
+    if (activeView === 'apps') {
+      loadPackages();
+    }
+  }, [activeView]);
+
+  const loadPackages = async () => {
+    setIsLoadingPackages(true);
+    try {
+      const packageList = await GetInstalledPackages();
+      setPackages(packageList || []);
+    } catch (error) {
+      console.error("Failed to load packages:", error);
+      toast.error("Failed to load packages", { description: String(error) });
+    } finally {
+      setIsLoadingPackages(false);
+    }
+  };
 
   const handleSelectApk = async () => {
     try {
@@ -69,23 +93,24 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
   };
 
   const handleUninstall = async () => {
-    if (!packageName) {
-      toast.error("Package name cannot be empty.");
+    if (!selectedPackage) {
+      toast.error("No package selected.");
       return;
     }
 
     setIsUninstalling(true);
     const toastId = toast.loading("Uninstalling package...", {
-      description: packageName,
+      description: selectedPackage,
     });
 
     try {
-      const output = await UninstallPackage(packageName);
+      const output = await UninstallPackage(selectedPackage);
       toast.success("Uninstall Complete", {
         description: output,
         id: toastId,
       });
-      setPackageName(''); 
+      setSelectedPackage(''); 
+      await loadPackages();
     } catch (error) {
       console.error("Uninstall error:", error);
       toast.error("Uninstall Failed", {
@@ -146,28 +171,66 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
             Uninstall Package
           </CardTitle>
           <CardDescription>
-            Enter the package name to uninstall it from your device.
+            Search and select a package to uninstall it from your device.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="package-name" className="text-sm font-medium">
-              Package Name
-            </label>
-            <Input 
-              id="package-name" 
-              placeholder="e.g., com.example.app" 
-              value={packageName}
-              onChange={(e) => setPackageName(e.target.value)}
-              disabled={isUninstalling}
-            />
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={loadPackages}
+              disabled={isLoadingPackages}
+            >
+              {isLoadingPackages ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+            <div className="flex-1 text-sm text-muted-foreground flex items-center">
+              {isLoadingPackages ? "Loading packages..." : `${packages.length} packages found`}
+            </div>
           </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Select Package
+            </label>
+            <Command className="rounded-lg border shadow-md">
+              <CommandInput placeholder="Search packages..." />
+              <CommandList>
+                <CommandEmpty>No packages found.</CommandEmpty>
+                <CommandGroup>
+                  <ScrollArea className="h-[200px]">
+                    {packages.map((pkg) => (
+                      <CommandItem
+                        key={pkg.Name}
+                        onSelect={() => setSelectedPackage(pkg.Name)}
+                        className={selectedPackage === pkg.Name ? "bg-accent" : ""}
+                      >
+                        <Package className="mr-2 h-4 w-4" />
+                        <span className="text-sm">{pkg.Name}</span>
+                      </CommandItem>
+                    ))}
+                  </ScrollArea>
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </div>
+
+          {selectedPackage && (
+            <div className="text-sm text-muted-foreground p-2 bg-muted rounded-md">
+              Selected: <span className="font-medium text-foreground">{selectedPackage}</span>
+            </div>
+          )}
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button 
                 variant="destructive"
                 className="w-full"
-                disabled={isUninstalling || !packageName} 
+                disabled={isUninstalling || !selectedPackage} 
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Uninstall
@@ -175,16 +238,16 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Anda akan menghapus paket:{" "}
-                  <span className="font-semibold text-foreground">{packageName}</span>.
+                  You are about to uninstall:{" "}
+                  <span className="font-semibold text-foreground">{selectedPackage}</span>.
                   <br />
-                  Tindakan ini tidak dapat dibatalkan.
+                  This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Batal</AlertDialogCancel>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   className={buttonVariants({ variant: "destructive" })}
                   onClick={handleUninstall}
@@ -195,7 +258,7 @@ export function ViewAppManager({ activeView }: { activeView: string }) {
                   ) : (
                     <Trash2 className="mr-2 h-4 w-4" />
                   )}
-                  Ya, Uninstall
+                  Yes, Uninstall
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

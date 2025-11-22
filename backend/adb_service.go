@@ -238,6 +238,32 @@ func (a *App) UninstallPackage(packageName string) (string, error) {
 	return output, nil
 }
 
+func (a *App) GetInstalledPackages() ([]InstalledPackage, error) {
+	output, err := a.runCommand("adb", "shell", "pm", "list", "packages")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get installed packages: %w", err)
+	}
+
+	var packages []InstalledPackage
+	lines := strings.Split(output, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		
+		packageName := strings.TrimPrefix(line, "package:")
+		if packageName != line {
+			packages = append(packages, InstalledPackage{
+				Name: packageName,
+			})
+		}
+	}
+
+	return packages, nil
+}
+
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
 	output, err := a.runCommand("adb", "shell", "ls", "-lA", path)
 	if err != nil {

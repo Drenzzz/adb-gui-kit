@@ -31,6 +31,9 @@ type FileEntry struct {
 	Date        string
 	Time        string
 }
+type InstalledPackage struct {
+	Name string
+}
 
 // App struct
 type App struct {

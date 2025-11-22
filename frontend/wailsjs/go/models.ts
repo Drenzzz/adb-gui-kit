@@ -70,6 +70,18 @@ export namespace backend {
 	        this.Time = source["Time"];
 	    }
 	}
+	export class InstalledPackage {
+	    Name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new InstalledPackage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Name = source["Name"];
+	    }
+	}
 
 }
 
