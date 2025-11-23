@@ -34,10 +34,6 @@ export function GetFastbootDevices() {
   return window['go']['backend']['App']['GetFastbootDevices']();
 }
 
-export function GetInstalledPackages() {
-  return window['go']['backend']['App']['GetInstalledPackages']();
-}
-
 export function Greet(arg1) {
   return window['go']['backend']['App']['Greet'](arg1);
 }
@@ -48,6 +44,10 @@ export function InstallPackage(arg1) {
 
 export function ListFiles(arg1) {
   return window['go']['backend']['App']['ListFiles'](arg1);
+}
+
+export function ListPackages(arg1) {
+  return window['go']['backend']['App']['ListPackages'](arg1);
 }
 
 export function PullFile(arg1, arg2) {

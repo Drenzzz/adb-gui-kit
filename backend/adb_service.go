@@ -238,31 +238,42 @@ func (a *App) UninstallPackage(packageName string) (string, error) {
 	return output, nil
 }
 
-func (a *App) GetInstalledPackages() ([]InstalledPackage, error) {
-	output, err := a.runCommand("adb", "shell", "pm", "list", "packages")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get installed packages: %w", err)
+func (a *App) ListPackages(filterType string) ([]PackageInfo, error) {
+	args := []string{"shell", "pm", "list", "packages"}
+	switch filterType {
+	case "user":
+		args = append(args, "-3")
+	case "system":
+		args = append(args, "-s")
+	case "all":
+	default:
 	}
 
-	var packages []InstalledPackage
+	output, err := a.runCommand("adb", args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list packages: %w. Output: %s", err, output)
+	}
+
+	var packages []PackageInfo
+	
 	lines := strings.Split(output, "\n")
+	prefix := "package:"
 
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
+		trimmedLine := strings.TrimSpace(line)
 		
-		packageName := strings.TrimPrefix(line, "package:")
-		if packageName != line {
-			packages = append(packages, InstalledPackage{
-				Name: packageName,
+		if strings.HasPrefix(trimmedLine, prefix) {
+			packageName := strings.TrimPrefix(trimmedLine, prefix)
+			
+			packages = append(packages, PackageInfo{
+				PackageName: packageName,
 			})
 		}
 	}
 
 	return packages, nil
 }
+
 
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
 	output, err := a.runCommand("adb", "shell", "ls", "-lA", path)

@@ -18,13 +18,13 @@ export function GetDevices():Promise<Array<backend.Device>>;
 
 export function GetFastbootDevices():Promise<Array<backend.Device>>;
 
-export function GetInstalledPackages():Promise<Array<backend.InstalledPackage>>;
-
 export function Greet(arg1:string):Promise<string>;
 
 export function InstallPackage(arg1:string):Promise<string>;
 
 export function ListFiles(arg1:string):Promise<Array<backend.FileEntry>>;
+
+export function ListPackages(arg1:string):Promise<Array<backend.PackageInfo>>;
 
 export function PullFile(arg1:string,arg2:string):Promise<string>;
 

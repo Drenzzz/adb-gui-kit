@@ -31,8 +31,9 @@ type FileEntry struct {
 	Date        string
 	Time        string
 }
-type InstalledPackage struct {
-	Name string
+
+type PackageInfo struct {
+	PackageName string
 }
 
 // App struct
