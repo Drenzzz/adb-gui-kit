@@ -1,11 +1,10 @@
-import React from "react";
+import React, { useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { backend } from "../../../wailsjs/go/models";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Download, Eye, EyeOff, List, Loader2, MoreHorizontal, Eraser } from "lucide-react";
 
@@ -31,6 +30,8 @@ interface InstalledPackagesCardProps {
   isPullingPackageName: string;
 }
 
+const ROW_HEIGHT = 48;
+
 export function InstalledPackagesCard({
   visiblePackages,
   totalPackages,
@@ -50,6 +51,17 @@ export function InstalledPackagesCard({
   isTogglingPackageName,
   isPullingPackageName,
 }: InstalledPackagesCardProps) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: visiblePackages.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10,
+  });
+
+  const virtualRows = virtualizer.getVirtualItems();
+
   return (
     <Card className="flex flex-col overflow-hidden border border-border/60 shadow-xl">
       <CardHeader className="space-y-4">
@@ -73,91 +85,98 @@ export function InstalledPackagesCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="rounded-2xl border bg-card/80">
-          <ScrollArea className="max-h-[60vh] overflow-auto">
-            <div className="min-w-[640px]">
-              <Table>
-                <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur">
-                  <TableRow>
-                    <TableHead className="w-[50px]">
-                      <Checkbox checked={allVisibleSelected} onCheckedChange={(checked) => onToggleSelectAll(Boolean(checked))} aria-label="Select all" />
-                    </TableHead>
-                    <TableHead className="w-[110px]">Status</TableHead>
-                    <TableHead>Package Name</TableHead>
-                    <TableHead className="w-[120px] text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoadingList ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="h-32 text-center">
-                        <Loader2 className="mx-auto h-6 w-6 animate-spin" />
-                      </TableCell>
-                    </TableRow>
-                  ) : visiblePackages.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="h-32 text-center">
-                        No packages match your filters.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    visiblePackages.map((pkg) => {
-                      const isSelected = selectedPackages.includes(pkg.PackageName);
-                      const isBusy = isTogglingPackageName === pkg.PackageName || isPullingPackageName === pkg.PackageName;
-
-                      return (
-                        <TableRow key={pkg.PackageName} data-state={isSelected ? "selected" : !pkg.IsEnabled ? "disabled" : ""} className="hover:bg-muted/40">
-                          <TableCell>
-                            <Checkbox checked={isSelected} onCheckedChange={(checked) => onSelectPackage(pkg.PackageName, Boolean(checked))} aria-label="Select row" />
-                          </TableCell>
-                          <TableCell>
-                            {pkg.IsEnabled ? (
-                              <span className="flex items-center text-emerald-500">
-                                <Eye className="mr-2 h-4 w-4" />
-                                Enabled
-                              </span>
-                            ) : (
-                              <span className="flex items-center text-muted-foreground">
-                                <EyeOff className="mr-2 h-4 w-4" />
-                                Disabled
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">{pkg.PackageName}</TableCell>
-                          <TableCell className="text-right">
-                            {isBusy ? (
-                              <Loader2 className="ml-auto h-4 w-4 animate-spin" />
-                            ) : (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon-sm">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => onTogglePackage(pkg)}>
-                                    {pkg.IsEnabled ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-                                    {pkg.IsEnabled ? "Disable" : "Enable"}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => onPullApk(pkg)}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Pull APK
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => onRequestClearData(pkg)}>
-                                    <Eraser className="mr-2 h-4 w-4" />
-                                    Clear Data
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+          <div className="min-w-[640px]">
+            <div className="sticky top-0 z-10 flex bg-background/95 backdrop-blur border-b">
+              <div className="flex items-center justify-center w-[50px] h-10 px-4">
+                <Checkbox checked={allVisibleSelected} onCheckedChange={(checked) => onToggleSelectAll(Boolean(checked))} aria-label="Select all" />
+              </div>
+              <div className="flex items-center w-[110px] h-10 px-4 text-sm font-medium text-muted-foreground">Status</div>
+              <div className="flex-1 flex items-center h-10 px-4 text-sm font-medium text-muted-foreground">Package Name</div>
+              <div className="flex items-center justify-end w-[120px] h-10 px-4 text-sm font-medium text-muted-foreground">Actions</div>
             </div>
-          </ScrollArea>
+
+            <div ref={parentRef} className="max-h-[60vh] overflow-auto custom-scroll">
+              {isLoadingList ? (
+                <div className="flex items-center justify-center h-32">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : visiblePackages.length === 0 ? (
+                <div className="flex items-center justify-center h-32 text-muted-foreground">No packages match your filters.</div>
+              ) : (
+                <div
+                  style={{
+                    height: `${virtualizer.getTotalSize()}px`,
+                    width: "100%",
+                    position: "relative",
+                  }}
+                >
+                  {virtualRows.map((virtualRow) => {
+                    const pkg = visiblePackages[virtualRow.index];
+                    const isSelected = selectedPackages.includes(pkg.PackageName);
+                    const isBusy = isTogglingPackageName === pkg.PackageName || isPullingPackageName === pkg.PackageName;
+
+                    return (
+                      <div
+                        key={pkg.PackageName}
+                        data-index={virtualRow.index}
+                        ref={virtualizer.measureElement}
+                        className={`absolute top-0 left-0 w-full flex items-center border-b hover:bg-muted/40 ${isSelected ? "bg-muted/20" : ""} ${!pkg.IsEnabled ? "opacity-60" : ""}`}
+                        style={{
+                          height: `${ROW_HEIGHT}px`,
+                          transform: `translateY(${virtualRow.start}px)`,
+                        }}
+                      >
+                        <div className="flex items-center justify-center w-[50px] px-4">
+                          <Checkbox checked={isSelected} onCheckedChange={(checked) => onSelectPackage(pkg.PackageName, Boolean(checked))} aria-label="Select row" />
+                        </div>
+                        <div className="flex items-center w-[110px] px-4">
+                          {pkg.IsEnabled ? (
+                            <span className="flex items-center text-emerald-500 text-sm">
+                              <Eye className="mr-2 h-4 w-4" />
+                              Enabled
+                            </span>
+                          ) : (
+                            <span className="flex items-center text-muted-foreground text-sm">
+                              <EyeOff className="mr-2 h-4 w-4" />
+                              Disabled
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 px-4 font-mono text-sm truncate">{pkg.PackageName}</div>
+                        <div className="flex items-center justify-end w-[120px] px-4">
+                          {isBusy ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon-sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => onTogglePackage(pkg)}>
+                                  {pkg.IsEnabled ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                                  {pkg.IsEnabled ? "Disable" : "Enable"}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onPullApk(pkg)}>
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Pull APK
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onRequestClearData(pkg)}>
+                                  <Eraser className="mr-2 h-4 w-4" />
+                                  Clear Data
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
