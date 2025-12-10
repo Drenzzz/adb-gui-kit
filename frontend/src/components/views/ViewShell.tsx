@@ -12,6 +12,14 @@ interface ViewShellProps {
   setCommandHistory: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
+const MAX_OUTPUT_HISTORY = 500;
+const MAX_COMMAND_HISTORY = 100;
+
+function limitHistory<T>(arr: T[], max: number): T[] {
+  if (arr.length <= max) return arr;
+  return arr.slice(arr.length - max);
+}
+
 export function ViewShell({ activeView, history, setHistory, commandHistory, setCommandHistory }: ViewShellProps) {
   const [command, setCommand] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -52,14 +60,15 @@ export function ViewShell({ activeView, history, setHistory, commandHistory, set
     const trimmedCommand = command.trim();
 
     if (commandHistory[commandHistory.length - 1] !== trimmedCommand) {
-      setCommandHistory([...commandHistory, trimmedCommand]);
+      setCommandHistory((prev) => limitHistory([...prev, trimmedCommand], MAX_COMMAND_HISTORY));
     }
     setHistoryIndex(commandHistory.length + 1);
 
     setIsLoading(true);
     setCommand("");
 
-    const newHistory: HistoryEntry[] = [...history, { type: "command", text: trimmedCommand }];
+    const commandEntry: HistoryEntry = { type: "command", text: trimmedCommand };
+    const newHistory = limitHistory([...history, commandEntry], MAX_OUTPUT_HISTORY);
     setHistory(newHistory);
 
     try {
@@ -79,10 +88,12 @@ export function ViewShell({ activeView, history, setHistory, commandHistory, set
       } else {
         throw new Error(`Unknown command: "${trimmedCommand}".`);
       }
-      setHistory([...newHistory, { type: "result", text: result.trim() || "(No output)" }]);
+      const resultEntry: HistoryEntry = { type: "result", text: result.trim() || "(No output)" };
+      setHistory((prev) => limitHistory([...prev, resultEntry], MAX_OUTPUT_HISTORY));
     } catch (err) {
       const error = err as Error;
-      setHistory([...newHistory, { type: "error", text: error.message }]);
+      const errorEntry: HistoryEntry = { type: "error", text: error.message };
+      setHistory((prev) => limitHistory([...prev, errorEntry], MAX_OUTPUT_HISTORY));
     } finally {
       setIsLoading(false);
     }
@@ -99,7 +110,7 @@ export function ViewShell({ activeView, history, setHistory, commandHistory, set
         viewport.scrollTop = viewport.scrollHeight;
       }
     }
-  }, [History]);
+  }, [history]);
 
   useEffect(() => {
     if (!isLoading) {
