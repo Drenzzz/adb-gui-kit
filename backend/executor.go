@@ -19,20 +19,17 @@ func (a *App) getBinaryPath(name string) (string, error) {
 
 	candidates := []string{
 		filepath.Join(".", "bin", platformDir, name+extension),
+		filepath.Join(".", "bin", name+extension), // Flat structure support
 	}
 
 	exePath, err := os.Executable()
-	if err != nil {
-		return "", err
+	if err == nil {
+		installDir := filepath.Dir(exePath)
+		candidates = append(candidates, 
+			filepath.Join(installDir, "bin", platformDir, name+extension),
+			filepath.Join(installDir, "bin", name+extension),
+		)
 	}
-	installDir := filepath.Dir(exePath)
-	candidates = append(candidates, filepath.Join(installDir, "bin", platformDir, name+extension))
-
-	// Legacy fallback: allow flat bin layout so older installs still run.
-	candidates = append(candidates,
-		filepath.Join(".", "bin", name+extension),
-		filepath.Join(installDir, "bin", name+extension),
-	)
 
 	for _, candidate := range candidates {
 		if candidate == "" {
@@ -43,11 +40,14 @@ func (a *App) getBinaryPath(name string) (string, error) {
 			if filepath.IsAbs(candidate) {
 				return candidate, nil
 			}
-			return filepath.Abs(candidate)
+			abs, err := filepath.Abs(candidate)
+			if err == nil {
+				return abs, nil
+			}
 		}
 	}
 
-	return "", fmt.Errorf("binary '%s' not found for platform '%s'", name, platformDir)
+	return "", fmt.Errorf("binary '%s' not found. Please ensure 'bin/%s/%s%s' exists", name, platformDir, name, extension)
 }
 
 func (a *App) runCommand(name string, args ...string) (string, error) {
@@ -57,7 +57,6 @@ func (a *App) runCommand(name string, args ...string) (string, error) {
 	}
 
 	cmd := exec.Command(binaryPath, args...)
-
 	setCommandWindowMode(cmd)
 
 	var out bytes.Buffer
@@ -67,20 +66,39 @@ func (a *App) runCommand(name string, args ...string) (string, error) {
 
 	err = cmd.Run()
 	if err != nil {
-		return "", fmt.Errorf("failed to run %s: %s (stderr: %s)", name, err, stderr.String())
+		// Clean up error message for UI
+		errOutput := strings.TrimSpace(stderr.String())
+		if errOutput == "" {
+			errOutput = err.Error()
+		}
+		
+		// Common ADB errors remapping
+		if strings.Contains(errOutput, "device offline") {
+			return "", fmt.Errorf("device is offline. Try reconnecting USB")
+		}
+		if strings.Contains(errOutput, "unauthorized") {
+			return "", fmt.Errorf("unauthorized. Check phone screen to allow USB debugging")
+		}
+
+		return "", fmt.Errorf("%s", errOutput)
 	}
 
 	return strings.TrimSpace(out.String()), nil
 }
 
 func (a *App) runShellCommand(shellCommand string) (string, error) {
+	// Security: simplistic check to prevent completely reckless command injection
+	// Ideally, shell commands should be avoided in favor of direct args, but adb shell requires it often.
+	if strings.ContainsAny(shellCommand, "&|;") {
+		return "", fmt.Errorf("illegal characters in command")
+	}
+
 	binaryPath, err := a.getBinaryPath("adb")
 	if err != nil {
 		return "", err
 	}
 
 	cmd := exec.Command(binaryPath, "shell", shellCommand)
-
 	setCommandWindowMode(cmd)
 
 	var out bytes.Buffer
@@ -90,8 +108,33 @@ func (a *App) runShellCommand(shellCommand string) (string, error) {
 
 	err = cmd.Run()
 	if err != nil {
-		return "", fmt.Errorf("failed to run adb shell '%s': %s (stderr: %s)", shellCommand, err, stderr.String())
+		errOutput := strings.TrimSpace(stderr.String())
+		if errOutput == "" {
+			errOutput = err.Error()
+		}
+		return "", fmt.Errorf("shell error: %s", errOutput)
 	}
 
 	return strings.TrimSpace(out.String()), nil
+}
+
+// CheckSystemRequirements verifies that necessary binaries are present and executable
+func (a *App) CheckSystemRequirements() (string, error) {
+	adbPath, err := a.getBinaryPath("adb")
+	if err != nil {
+		return "", fmt.Errorf("Critical: ADB not found. %w", err)
+	}
+
+	if _, err := a.getBinaryPath("fastboot"); err != nil {
+		return "", fmt.Errorf("Critical: Fastboot not found. %w", err)
+	}
+
+	// Smoke test: checks if we can actually execute adb
+	cmd := exec.Command(adbPath, "--version")
+	setCommandWindowMode(cmd)
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("ADB found at %s but failed to run: %v", adbPath, err)
+	}
+
+	return "All systems ready", nil
 }
