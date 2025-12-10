@@ -3,8 +3,8 @@ package backend
 import (
 	"fmt"
 	"regexp"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type DeviceMode string
@@ -191,6 +191,10 @@ func (a *App) GetDeviceMode() (string, error) {
 }
 
 func (a *App) Reboot(mode string) error {
+	if err := ValidateRebootMode(mode); err != nil {
+		return fmt.Errorf("invalid reboot mode: %w", err)
+	}
+	
 	connectionMode, detectionErr := a.detectDeviceMode()
 	if detectionErr != nil {
 		return detectionErr
@@ -223,6 +227,10 @@ func (a *App) Reboot(mode string) error {
 }
 
 func (a *App) InstallPackage(filePath string) (string, error) {
+	if err := ValidateFilePath(filePath); err != nil {
+		return "", fmt.Errorf("invalid file path: %w", err)
+	}
+	
 	output, err := a.runCommand("adb", "install", "-r", filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to install package: %w. Output: %s", err, output)
@@ -231,6 +239,10 @@ func (a *App) InstallPackage(filePath string) (string, error) {
 }
 
 func (a *App) UninstallPackage(packageName string) (string, error) {
+	if err := ValidatePackageName(packageName); err != nil {
+		return "", fmt.Errorf("invalid package name: %w", err)
+	}
+	
 	output, err := a.runCommand("adb", "shell", "pm", "uninstall", packageName)
 	if err != nil {
 		return "", fmt.Errorf("failed to uninstall package: %w. Output: %s", err, output)
@@ -308,8 +320,8 @@ func (a *App) ListPackages(filterType string) ([]PackageInfo, error) {
 
 
 func (a *App) ClearData(packageName string) (string, error) {
-	if packageName == "" {
-		return "", fmt.Errorf("package name cannot be empty")
+	if err := ValidatePackageName(packageName); err != nil {
+		return "", fmt.Errorf("invalid package name: %w", err)
 	}
 
 	output, err := a.runCommand("adb", "shell", "pm", "clear", packageName)
@@ -326,8 +338,8 @@ func (a *App) ClearData(packageName string) (string, error) {
 }
 
 func (a *App) DisablePackage(packageName string) (string, error) {
-	if packageName == "" {
-		return "", fmt.Errorf("package name cannot be empty")
+	if err := ValidatePackageName(packageName); err != nil {
+		return "", fmt.Errorf("invalid package name: %w", err)
 	}
 
 	// pm disable requires a component name. disable-user targets the whole package for user 0 without root.
@@ -348,8 +360,8 @@ func (a *App) DisablePackage(packageName string) (string, error) {
 }
 
 func (a *App) EnablePackage(packageName string) (string, error) {
-	if packageName == "" {
-		return "", fmt.Errorf("package name cannot be empty")
+	if err := ValidatePackageName(packageName); err != nil {
+		return "", fmt.Errorf("invalid package name: %w", err)
 	}
 
 	output, err := a.runCommand("adb", "shell", "pm", "enable", "--user", "0", packageName)
@@ -365,8 +377,8 @@ func (a *App) EnablePackage(packageName string) (string, error) {
 }
 
 func (a *App) PullApk(packageName string) (string, error) {
-	if packageName == "" {
-		return "", fmt.Errorf("package name cannot be empty")
+	if err := ValidatePackageName(packageName); err != nil {
+		return "", fmt.Errorf("invalid package name: %w", err)
 	}
 
 	pathOutput, err := a.runCommand("adb", "shell", "pm", "path", packageName)
@@ -554,6 +566,10 @@ func (a *App) PullMultipleFiles(remotePaths []string) (string, error) {
 }
 
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
+	if err := ValidateRemotePath(path); err != nil {
+		return nil, fmt.Errorf("invalid path: %w", err)
+	}
+	
 	output, err := a.runCommand("adb", "shell", "ls", "-lA", path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files: %w. Output: %s", err, output)
@@ -644,6 +660,13 @@ func (a *App) ListFiles(path string) ([]FileEntry, error) {
 }
 
 func (a *App) PushFile(localPath string, remotePath string) (string, error) {
+	if err := ValidateFilePath(localPath); err != nil {
+		return "", fmt.Errorf("invalid local path: %w", err)
+	}
+	if err := ValidateRemotePath(remotePath); err != nil {
+		return "", fmt.Errorf("invalid remote path: %w", err)
+	}
+	
 	output, err := a.runCommand("adb", "push", localPath, remotePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to push file: %w. Output: %s", err, output)
@@ -652,6 +675,13 @@ func (a *App) PushFile(localPath string, remotePath string) (string, error) {
 }
 
 func (a *App) PullFile(remotePath string, localPath string) (string, error) {
+	if err := ValidateRemotePath(remotePath); err != nil {
+		return "", fmt.Errorf("invalid remote path: %w", err)
+	}
+	if err := ValidateFilePath(localPath); err != nil {
+		return "", fmt.Errorf("invalid local path: %w", err)
+	}
+	
 	output, err := a.runCommand("adb", "pull", "-a", remotePath, localPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to pull file: %w. Output: %s", err, output)
@@ -660,11 +690,12 @@ func (a *App) PullFile(remotePath string, localPath string) (string, error) {
 }
 
 func (a *App) CreateFolder(fullPath string) (string, error) {
-	if fullPath == "" {
-		return "", fmt.Errorf("path cannot be empty")
+	if err := ValidateRemotePath(fullPath); err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
 	}
 
-	command := fmt.Sprintf("mkdir -p '%s'", fullPath)
+	sanitizedPath := SanitizeShellArg(fullPath)
+	command := fmt.Sprintf("mkdir -p '%s'", sanitizedPath)
 
 	output, err := a.runShellCommand(command)
 	if err != nil {
@@ -675,11 +706,12 @@ func (a *App) CreateFolder(fullPath string) (string, error) {
 }
 
 func (a *App) DeleteFile(fullPath string) (string, error) {
-	if fullPath == "" {
-		return "", fmt.Errorf("path cannot be empty")
+	if err := ValidateRemotePath(fullPath); err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
 	}
 
-	command := fmt.Sprintf("rm -rf '%s'", fullPath)
+	sanitizedPath := SanitizeShellArg(fullPath)
+	command := fmt.Sprintf("rm -rf '%s'", sanitizedPath)
 
 	output, err := a.runShellCommand(command)
 	if err != nil {
@@ -690,11 +722,16 @@ func (a *App) DeleteFile(fullPath string) (string, error) {
 }
 
 func (a *App) RenameFile(oldPath string, newPath string) (string, error) {
-	if oldPath == "" || newPath == "" {
-		return "", fmt.Errorf("old and new paths cannot be empty")
+	if err := ValidateRemotePath(oldPath); err != nil {
+		return "", fmt.Errorf("invalid old path: %w", err)
+	}
+	if err := ValidateRemotePath(newPath); err != nil {
+		return "", fmt.Errorf("invalid new path: %w", err)
 	}
 
-	command := fmt.Sprintf("mv '%s' '%s'", oldPath, newPath)
+	sanitizedOld := SanitizeShellArg(oldPath)
+	sanitizedNew := SanitizeShellArg(newPath)
+	command := fmt.Sprintf("mv '%s' '%s'", sanitizedOld, sanitizedNew)
 
 	output, err := a.runShellCommand(command)
 	if err != nil {
@@ -705,9 +742,8 @@ func (a *App) RenameFile(oldPath string, newPath string) (string, error) {
 }
 
 func (a *App) SideloadPackage(filePath string) (string, error) {
-	filePath = strings.TrimSpace(filePath)
-	if filePath == "" {
-		return "", fmt.Errorf("file path cannot be empty")
+	if err := ValidateFilePath(filePath); err != nil {
+		return "", fmt.Errorf("invalid file path: %w", err)
 	}
 
 	output, err := a.runCommand("adb", "sideload", filePath)
@@ -722,6 +758,9 @@ func (a *App) EnableWirelessAdb(port string) (string, error) {
 	if port == "" {
 		port = "5555"
 	}
+	if err := ValidatePort(port); err != nil {
+		return "", fmt.Errorf("invalid port: %w", err)
+	}
 	
 	output, err := a.runCommand("adb", "tcpip", port)
 	if err != nil {
@@ -732,11 +771,14 @@ func (a *App) EnableWirelessAdb(port string) (string, error) {
 }
 
 func (a *App) ConnectWirelessAdb(ipAddress string, port string) (string, error) {
-	if ipAddress == "" {
-		return "", fmt.Errorf("IP address cannot be empty")
+	if err := ValidateIPAddress(ipAddress); err != nil {
+		return "", fmt.Errorf("invalid IP address: %w", err)
 	}
 	if port == "" {
 		port = "5555"
+	}
+	if err := ValidatePort(port); err != nil {
+		return "", fmt.Errorf("invalid port: %w", err)
 	}
 	
 	address := fmt.Sprintf("%s:%s", ipAddress, port)
@@ -757,11 +799,14 @@ func (a *App) ConnectWirelessAdb(ipAddress string, port string) (string, error) 
 }
 
 func (a *App) DisconnectWirelessAdb(ipAddress string, port string) (string, error) {
-	if ipAddress == "" {
-		return "", fmt.Errorf("IP address cannot be empty")
+	if err := ValidateIPAddress(ipAddress); err != nil {
+		return "", fmt.Errorf("invalid IP address: %w", err)
 	}
 	if port == "" {
 		port = "5555"
+	}
+	if err := ValidatePort(port); err != nil {
+		return "", fmt.Errorf("invalid port: %w", err)
 	}
 	
 	address := fmt.Sprintf("%s:%s", ipAddress, port)

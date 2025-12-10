@@ -87,11 +87,10 @@ func (a *App) runCommand(name string, args ...string) (string, error) {
 }
 
 func (a *App) runShellCommand(shellCommand string) (string, error) {
-	// Security: simplistic check to prevent completely reckless command injection
-	// Ideally, shell commands should be avoided in favor of direct args, but adb shell requires it often.
-	if strings.ContainsAny(shellCommand, "&|;") {
+	if ContainsDangerousShellChars(shellCommand) {
 		return "", fmt.Errorf("illegal characters in command")
 	}
+
 
 	binaryPath, err := a.getBinaryPath("adb")
 	if err != nil {
