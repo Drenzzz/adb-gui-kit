@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func (a *App) GetDevices() ([]Device, error) {
@@ -119,36 +120,103 @@ func (a *App) getStorageInfo() string {
 
 func (a *App) GetDeviceInfo() (DeviceInfo, error) {
 	var info DeviceInfo
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-	info.Model = a.getProp("ro.product.model")
-	info.AndroidVersion = a.getProp("ro.build.version.release")
-	info.BuildNumber = a.getProp("ro.build.id")
-	info.Codename = a.getProp("ro.product.device")
-	info.IPAddress = a.getIPAddress()
-	info.RootStatus = a.checkRootStatus()
-	info.RamTotal = a.getRamTotal()
-	info.StorageInfo = a.getStorageInfo()
-	info.Brand = a.getProp("ro.product.brand")
-	info.DeviceName = a.getProp("ro.product.name")
-
-	if serial, err := a.runCommand("adb", "get-serialno"); err == nil {
-		info.Serial = strings.TrimSpace(serial)
-	} else {
-		info.Serial = strings.TrimSpace(a.getProp("ro.serialno"))
+	propKeys := []struct {
+		prop   string
+		setter func(val string)
+	}{
+		{"ro.product.model", func(val string) { info.Model = val }},
+		{"ro.build.version.release", func(val string) { info.AndroidVersion = val }},
+		{"ro.build.id", func(val string) { info.BuildNumber = val }},
+		{"ro.product.device", func(val string) { info.Codename = val }},
+		{"ro.product.brand", func(val string) { info.Brand = val }},
+		{"ro.product.name", func(val string) { info.DeviceName = val }},
 	}
 
-	batteryOutput, err := a.runShellCommand("dumpsys battery | grep level")
-	if err != nil {
-		info.BatteryLevel = "N/A"
-	} else {
-		re := regexp.MustCompile(`:\s*(\d+)`)
-		matches := re.FindStringSubmatch(batteryOutput)
-		if len(matches) > 1 {
-			info.BatteryLevel = matches[1] + "%"
+	for _, pk := range propKeys {
+		wg.Add(1)
+		go func(prop string, setter func(string)) {
+			defer wg.Done()
+			val := a.getProp(prop)
+			mu.Lock()
+			setter(val)
+			mu.Unlock()
+		}(pk.prop, pk.setter)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		val := a.getIPAddress()
+		mu.Lock()
+		info.IPAddress = val
+		mu.Unlock()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		val := a.checkRootStatus()
+		mu.Lock()
+		info.RootStatus = val
+		mu.Unlock()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		val := a.getRamTotal()
+		mu.Lock()
+		info.RamTotal = val
+		mu.Unlock()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		val := a.getStorageInfo()
+		mu.Lock()
+		info.StorageInfo = val
+		mu.Unlock()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if serial, err := a.runCommand("adb", "get-serialno"); err == nil {
+			mu.Lock()
+			info.Serial = strings.TrimSpace(serial)
+			mu.Unlock()
 		} else {
-			info.BatteryLevel = "N/A"
+			val := a.getProp("ro.serialno")
+			mu.Lock()
+			info.Serial = strings.TrimSpace(val)
+			mu.Unlock()
 		}
-	}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		batteryOutput, err := a.runShellCommand("dumpsys battery | grep level")
+		mu.Lock()
+		if err != nil {
+			info.BatteryLevel = "N/A"
+		} else {
+			re := regexp.MustCompile(`:\s*(\d+)`)
+			matches := re.FindStringSubmatch(batteryOutput)
+			if len(matches) > 1 {
+				info.BatteryLevel = matches[1] + "%"
+			} else {
+				info.BatteryLevel = "N/A"
+			}
+		}
+		mu.Unlock()
+	}()
+
+	wg.Wait()
 
 	return info, nil
 }

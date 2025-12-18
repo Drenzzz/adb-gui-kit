@@ -3,6 +3,7 @@ package backend
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 func (a *App) InstallPackage(filePath string) (string, error) {
@@ -42,50 +43,94 @@ func (a *App) ListPackages(filterType string) ([]PackageInfo, error) {
 		filterFlag = ""
 	}
 
-	packageMap := make(map[string]PackageInfo)
 	prefix := "package:"
 
-	argsEnabled := []string{"shell", "pm", "list", "packages", "-e"}
-	if filterFlag != "" {
-		argsEnabled = append(argsEnabled, filterFlag)
-	}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	
+	var enabledPackages []string
+	var disabledPackages []string
+	var errEnabled error
+	var errDisabled error
 
-	outputEnabled, errEnabled := a.runCommand("adb", argsEnabled...)
-	if errEnabled != nil {
-		return nil, fmt.Errorf("failed to list enabled packages: %w", errEnabled)
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		argsEnabled := []string{"shell", "pm", "list", "packages", "-e"}
+		if filterFlag != "" {
+			argsEnabled = append(argsEnabled, filterFlag)
+		}
 
-	linesEnabled := strings.Split(outputEnabled, "\n")
-	for _, line := range linesEnabled {
-		trimmedLine := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmedLine, prefix) {
-			packageName := strings.TrimPrefix(trimmedLine, prefix)
-			packageMap[packageName] = PackageInfo{
-				PackageName: packageName,
-				IsEnabled:   true,
+		outputEnabled, err := a.runCommand("adb", argsEnabled...)
+		if err != nil {
+			mu.Lock()
+			errEnabled = fmt.Errorf("failed to list enabled packages: %w", err)
+			mu.Unlock()
+			return
+		}
+
+		lines := strings.Split(outputEnabled, "\n")
+		for _, line := range lines {
+			trimmedLine := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmedLine, prefix) {
+				pkgName := strings.TrimPrefix(trimmedLine, prefix)
+				mu.Lock()
+				enabledPackages = append(enabledPackages, pkgName)
+				mu.Unlock()
 			}
 		}
-	}
+	}()
 
-	argsDisabled := []string{"shell", "pm", "list", "packages", "-d"}
-	if filterFlag != "" {
-		argsDisabled = append(argsDisabled, filterFlag)
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		argsDisabled := []string{"shell", "pm", "list", "packages", "-d"}
+		if filterFlag != "" {
+			argsDisabled = append(argsDisabled, filterFlag)
+		}
 
-	outputDisabled, errDisabled := a.runCommand("adb", argsDisabled...)
-	if errDisabled != nil {
-		return nil, fmt.Errorf("failed to list disabled packages: %w", errDisabled)
-	}
+		outputDisabled, err := a.runCommand("adb", argsDisabled...)
+		if err != nil {
+			mu.Lock()
+			errDisabled = fmt.Errorf("failed to list disabled packages: %w", err)
+			mu.Unlock()
+			return
+		}
 
-	linesDisabled := strings.Split(outputDisabled, "\n")
-	for _, line := range linesDisabled {
-		trimmedLine := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmedLine, prefix) {
-			packageName := strings.TrimPrefix(trimmedLine, prefix)
-			packageMap[packageName] = PackageInfo{
-				PackageName: packageName,
-				IsEnabled:   false,
+		lines := strings.Split(outputDisabled, "\n")
+		for _, line := range lines {
+			trimmedLine := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmedLine, prefix) {
+				pkgName := strings.TrimPrefix(trimmedLine, prefix)
+				mu.Lock()
+				disabledPackages = append(disabledPackages, pkgName)
+				mu.Unlock()
 			}
+		}
+	}()
+
+	wg.Wait()
+
+	if errEnabled != nil {
+		return nil, errEnabled
+	}
+	if errDisabled != nil {
+		return nil, errDisabled
+	}
+
+	packageMap := make(map[string]PackageInfo)
+	
+	for _, pkgName := range enabledPackages {
+		packageMap[pkgName] = PackageInfo{
+			PackageName: pkgName,
+			IsEnabled:   true,
+		}
+	}
+	
+	for _, pkgName := range disabledPackages {
+		packageMap[pkgName] = PackageInfo{
+			PackageName: pkgName,
+			IsEnabled:   false,
 		}
 	}
 
