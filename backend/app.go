@@ -5,6 +5,14 @@ import (
 	"fmt"
 )
 
+type DeviceMode string
+
+const (
+	DeviceModeUnknown  DeviceMode = "unknown"
+	DeviceModeADB      DeviceMode = "adb"
+	DeviceModeFastboot DeviceMode = "fastboot"
+)
+
 type Device struct {
 	Serial string
 	Status string
