@@ -1,9 +1,11 @@
 package backend
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
@@ -11,6 +13,7 @@ func (a *App) ListFiles(path string) ([]FileEntry, error) {
 		return nil, fmt.Errorf("invalid path: %w", err)
 	}
 	
+	// List files uses default timeout (60s) which is sufficient
 	output, err := a.runCommand("adb", "shell", "ls", "-lA", path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list files: %w. Output: %s", err, output)
@@ -106,8 +109,25 @@ func (a *App) PushFile(localPath string, remotePath string) (string, error) {
 		return "", fmt.Errorf("invalid remote path: %w", err)
 	}
 	
-	output, err := a.runCommand("adb", "push", localPath, remotePath)
+	a.opMutex.Lock()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	a.currentCancel = cancel
+	a.opMutex.Unlock()
+
+	defer func() {
+		cancel()
+		a.opMutex.Lock()
+		if a.currentCancel != nil {
+			a.currentCancel = nil
+		}
+		a.opMutex.Unlock()
+	}()
+
+	output, err := a.runCommandContext(ctx, "adb", "push", localPath, remotePath)
 	if err != nil {
+		if ctx.Err() == context.Canceled {
+			return "", fmt.Errorf("push cancelled by user")
+		}
 		return "", fmt.Errorf("failed to push file: %w. Output: %s", err, output)
 	}
 	return output, nil
@@ -121,8 +141,26 @@ func (a *App) PullFile(remotePath string, localPath string) (string, error) {
 		return "", fmt.Errorf("invalid local path: %w", err)
 	}
 	
-	output, err := a.runCommand("adb", "pull", "-a", remotePath, localPath)
+	a.opMutex.Lock()
+	// No timeout for file transfers, only user cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	a.currentCancel = cancel
+	a.opMutex.Unlock()
+	
+	defer func() {
+		cancel()
+		a.opMutex.Lock()
+		if a.currentCancel != nil {
+			a.currentCancel = nil
+		}
+		a.opMutex.Unlock()
+	}()
+
+	output, err := a.runCommandContext(ctx, "adb", "pull", "-a", remotePath, localPath)
 	if err != nil {
+		if ctx.Err() == context.Canceled {
+			return "", fmt.Errorf("pull cancelled by user")
+		}
 		return "", fmt.Errorf("failed to pull file: %w. Output: %s", err, output)
 	}
 	return output, nil
@@ -225,9 +263,27 @@ func (a *App) PullMultipleFiles(remotePaths []string) (string, error) {
 	var failCount int
 	var errorMessages strings.Builder
 
+	// Batch pull: each file pull is discrete. We could potentially make the whole batch cancellable,
+	// but currently only individual calls to PullFile are cancellable via the App.currentCancel mechanism.
+	// Since PullFile implements the lock/cancel mechanism internally, cancelling *during* one file
+	// will stop that file. 
+	// To cancel the whole batch, the user would hit "Cancel" which triggers App.CancelOperation().
+	// That would kill the *current* PullFile command.
+	// The loop here continues. Ideally we should check if cancellation happened.
+	// But `a.currentCancel` is reset after each PullFile.
+	// So repeatedly clicking cancel would be needed. 
+	// For now, this is acceptable for basic batch support.
+
 	for _, remotePath := range remotePaths {
 		_, err := a.PullFile(remotePath, localSaveFolder)
 		if err != nil {
+			if strings.Contains(err.Error(), "cancelled by user") {
+				// If one is cancelled, we might stop the batch?
+				// Yes, assuming user wants to stop everything.
+				failCount++
+				errorMessages.WriteString(fmt.Sprintf("Cancelled %s\n", remotePath))
+				break 
+			}
 			failCount++
 			errorMessages.WriteString(fmt.Sprintf("Failed %s: %v\n", remotePath, err))
 		} else {

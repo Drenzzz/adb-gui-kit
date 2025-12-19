@@ -1,9 +1,11 @@
 package backend
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 )
 
 func (a *App) InstallPackage(filePath string) (string, error) {
@@ -11,8 +13,26 @@ func (a *App) InstallPackage(filePath string) (string, error) {
 		return "", fmt.Errorf("invalid file path: %w", err)
 	}
 	
-	output, err := a.runCommand("adb", "install", "-r", filePath)
+	a.opMutex.Lock()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	a.currentCancel = cancel
+	a.opMutex.Unlock()
+
+	defer func() {
+		cancel() // context cancel
+		a.opMutex.Lock()
+		if a.currentCancel != nil {
+			a.currentCancel = nil
+		}
+		a.opMutex.Unlock()
+	}()
+
+	// Use runCommandContext directly to utilize the cancellable context
+	output, err := a.runCommandContext(ctx, "adb", "install", "-r", filePath)
 	if err != nil {
+		if ctx.Err() == context.Canceled {
+			return "", fmt.Errorf("installation cancelled by user")
+		}
 		return "", fmt.Errorf("failed to install package: %w. Output: %s", err, output)
 	}
 	return output, nil
@@ -231,8 +251,22 @@ func (a *App) PullApk(packageName string) (string, error) {
 		return "APK pull cancelled by user", nil
 	}
 
-	output, err := a.runCommand("adb", "pull", remotePath, localPath)
+	a.opMutex.Lock()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	a.currentCancel = cancel
+	a.opMutex.Unlock()
+	defer func() {
+		cancel()
+		a.opMutex.Lock()
+		a.currentCancel = nil
+		a.opMutex.Unlock()
+	}()
+
+	output, err := a.runCommandContext(ctx, "adb", "pull", remotePath, localPath)
 	if err != nil {
+		if ctx.Err() == context.Canceled {
+			return "", fmt.Errorf("pull cancelled by user")
+		}
 		return "", fmt.Errorf("adb pull failed: %w. Output: %s", err, output)
 	}
 

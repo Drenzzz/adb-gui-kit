@@ -2,13 +2,17 @@ package backend
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
+
+const DefaultCommandTimeout = 60 * time.Second
 
 func (a *App) getBinaryPath(name string) (string, error) {
 	a.cacheMutex.RLock()
@@ -66,13 +70,13 @@ func (a *App) getBinaryPath(name string) (string, error) {
 	return "", fmt.Errorf("binary '%s' not found. Please ensure 'bin/%s/%s%s' exists", name, platformDir, name, extension)
 }
 
-func (a *App) runCommand(name string, args ...string) (string, error) {
+func (a *App) runCommandContext(ctx context.Context, name string, args ...string) (string, error) {
 	binaryPath, err := a.getBinaryPath(name)
 	if err != nil {
 		return "", err
 	}
 
-	cmd := exec.Command(binaryPath, args...)
+	cmd := exec.CommandContext(ctx, binaryPath, args...)
 	setCommandWindowMode(cmd)
 
 	var out bytes.Buffer
@@ -82,6 +86,13 @@ func (a *App) runCommand(name string, args ...string) (string, error) {
 
 	err = cmd.Run()
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("command timed out after %s", DefaultCommandTimeout)
+		}
+		if ctx.Err() == context.Canceled {
+			return "", fmt.Errorf("command cancelled by user")
+		}
+
 		errOutput := strings.TrimSpace(stderr.String())
 		if errOutput == "" {
 			errOutput = err.Error()
@@ -100,18 +111,38 @@ func (a *App) runCommand(name string, args ...string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func (a *App) runCommand(name string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultCommandTimeout)
+	defer cancel()
+	return a.runCommandContext(ctx, name, args...)
+}
+
+func (a *App) runCommandWithTimeout(timeout time.Duration, name string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return a.runCommandContext(ctx, name, args...)
+}
+
+func (a *App) runCommandRaw(name string, args ...string) (string, error) {
+	// For backward compatibility or unlimited wait if needed (not recommended to use directly)
+	return a.runCommandContext(context.Background(), name, args...)
+}
+
 func (a *App) runShellCommand(shellCommand string) (string, error) {
 	if ContainsDangerousShellChars(shellCommand) {
 		return "", fmt.Errorf("illegal characters in command")
 	}
-
 
 	binaryPath, err := a.getBinaryPath("adb")
 	if err != nil {
 		return "", err
 	}
 
-	cmd := exec.Command(binaryPath, "shell", shellCommand)
+	// Shell commands default to 60s timeout too
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultCommandTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, binaryPath, "shell", shellCommand)
 	setCommandWindowMode(cmd)
 
 	var out bytes.Buffer
@@ -121,6 +152,9 @@ func (a *App) runShellCommand(shellCommand string) (string, error) {
 
 	err = cmd.Run()
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("shell command timed out")
+		}
 		errOutput := strings.TrimSpace(stderr.String())
 		if errOutput == "" {
 			errOutput = err.Error()

@@ -50,6 +50,9 @@ type App struct {
 	ctx         context.Context
 	binaryCache map[string]string
 	cacheMutex  sync.RWMutex
+	
+	currentCancel context.CancelFunc
+	opMutex       sync.Mutex
 }
 
 func NewApp() *App {
@@ -64,4 +67,16 @@ func (a *App) Startup(ctx context.Context) {
 
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
+}
+
+func (a *App) CancelOperation() string {
+	a.opMutex.Lock()
+	defer a.opMutex.Unlock()
+
+	if a.currentCancel != nil {
+		a.currentCancel()
+		a.currentCancel = nil
+		return "Operation cancelled."
+	}
+	return "No active operation to cancel."
 }
