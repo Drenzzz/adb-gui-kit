@@ -1,12 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { SelectApkFile, InstallPackage, ListPackages, ClearData, DisablePackage, EnablePackage, PullApk, UninstallMultiplePackages, DisableMultiplePackages, EnableMultiplePackages } from "../../wailsjs/go/backend/App";
-import { backend } from "../../wailsjs/go/models";
+import { SelectApkFile } from "../../wailsjs/go/backend/App";
 import type { QuickControlSelect } from "@/components/appManager/AppManagerQuickControlsCard";
-
-type FilterType = "user" | "system" | "all";
-type StatusFilter = "all" | "enabled" | "disabled";
-type PackageInfo = backend.PackageInfo;
+import { usePackageList } from "./usePackageList";
+import type { FilterType, StatusFilter, PackageInfo } from "./usePackageList";
+import { usePackageActions } from "./usePackageActions";
 
 interface UseAppManagerOptions {
   activeView: string;
@@ -14,55 +12,57 @@ interface UseAppManagerOptions {
 
 export function useAppManager({ activeView }: UseAppManagerOptions) {
   const [apkPath, setApkPath] = useState("");
-  const [isInstalling, setIsInstalling] = useState(false);
 
-  const [packageList, setPackageList] = useState<PackageInfo[]>([]);
-  const [isLoadingList, setIsLoadingList] = useState(false);
-  const [filter, setFilter] = useState<FilterType>("user");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [searchTerm, setSearchTerm] = useState("");
+  const {
+    packageList,
+    isLoadingList,
+    filter,
+    setFilter,
+    statusFilter,
+    setStatusFilter,
+    sortOrder,
+    setSortOrder,
+    searchTerm,
+    setSearchTerm,
+    loadPackages,
+    visiblePackages,
+    totalPackages,
+    enabledPackages,
+    disabledPackages,
+    handleResetFilters,
+  } = usePackageList();
 
-  const [isClearing, setIsClearing] = useState(false);
+  const {
+    isInstalling,
+    isClearing,
+    isTogglingPackageName,
+    isPullingPackageName,
+    isBatchUninstalling,
+    isBatchDisabling,
+    isBatchEnabling,
+    handleInstall: performInstall,
+    handleClearData: performClearData,
+    handleTogglePackage,
+    handlePullApk,
+    handleMultiUninstall: performMultiUninstall,
+    handleMultiDisable: performMultiDisable,
+    handleMultiEnable: performMultiEnable,
+  } = usePackageActions(loadPackages, filter);
+
   const [pkgToAction, setPkgToAction] = useState<string>("");
   const [isClearDataOpen, setIsClearDataOpen] = useState(false);
-
-  const [isTogglingPackageName, setIsTogglingPackageName] = useState<string>("");
-  const [isPullingPackageName, setIsPullingPackageName] = useState<string>("");
-
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
-
-  const [isBatchUninstalling, setIsBatchUninstalling] = useState(false);
   const [isBatchUninstallOpen, setIsBatchUninstallOpen] = useState(false);
-
-  const [isBatchDisabling, setIsBatchDisabling] = useState(false);
   const [isBatchDisablingOpen, setIsBatchDisablingOpen] = useState(false);
-  const [isBatchEnabling, setIsBatchEnabling] = useState(false);
   const [isBatchEnablingOpen, setIsBatchEnablingOpen] = useState(false);
-
-  const loadPackages = async (currentFilter: FilterType) => {
-    setIsLoadingList(true);
-    try {
-      const packages = await ListPackages(currentFilter);
-      setPackageList(packages || []);
-    } catch (error) {
-      console.error("Failed to list packages:", error);
-      toast.error("Failed to load package list", {
-        description: String(error),
-      });
-      setPackageList([]);
-    } finally {
-      setIsLoadingList(false);
-    }
-  };
 
   useEffect(() => {
     if (activeView === "apps") {
       loadPackages(filter);
     }
-  }, [activeView, filter]);
+  }, [activeView, filter, loadPackages]);
 
-  const handleSelectApk = async () => {
+  const handleSelectApk = useCallback(async () => {
     try {
       const selectedPath = await SelectApkFile();
       if (selectedPath) {
@@ -75,319 +75,140 @@ export function useAppManager({ activeView }: UseAppManagerOptions) {
         description: String(error),
       });
     }
-  };
+  }, []);
 
-  const handleInstall = async () => {
-    if (!apkPath) {
-      toast.error("No APK file selected.");
-      return;
-    }
+  const handleInstall = useCallback(() => {
+    performInstall(apkPath, setApkPath);
+  }, [performInstall, apkPath]);
 
-    setIsInstalling(true);
-    const toastId = toast.loading("Installing APK...", {
-      description: apkPath.split(/[/\\]/).pop(),
-    });
-
-    try {
-      const output = await InstallPackage(apkPath);
-      toast.success("Install Complete", {
-        description: output,
-        id: toastId,
-      });
-      setApkPath("");
-      if (filter === "user") {
-        loadPackages("user");
-      }
-    } catch (error) {
-      console.error("Install error:", error);
-      toast.error("Install Failed", {
-        description: String(error),
-        id: toastId,
-      });
-    } finally {
-      setIsInstalling(false);
-    }
-  };
-
-  const handleClearData = async () => {
-    if (!pkgToAction) return;
-
-    setIsClearing(true);
-    const toastId = toast.loading("Clearing data...", {
-      description: pkgToAction,
-    });
-
-    try {
-      const output = await ClearData(pkgToAction);
-      toast.success("Data Clear Successful", {
-        description: output,
-        id: toastId,
-      });
-    } catch (error) {
-      console.error("Clear data error:", error);
-      toast.error("Clear Data Failed", {
-        description: String(error),
-        id: toastId,
-      });
-    } finally {
-      setIsClearing(false);
+  const handleClearData = useCallback(() => {
+    performClearData(pkgToAction, () => {
       setIsClearDataOpen(false);
       setPkgToAction("");
-    }
-  };
-
-  const handleTogglePackage = async (pkg: PackageInfo) => {
-    setIsTogglingPackageName(pkg.PackageName);
-    const action = pkg.IsEnabled ? "Disabling" : "Enabling";
-    const toastId = toast.loading(`${action} package...`, {
-      description: pkg.PackageName,
     });
+  }, [performClearData, pkgToAction]);
 
-    try {
-      let output = "";
-      if (pkg.IsEnabled) {
-        output = await DisablePackage(pkg.PackageName);
-      } else {
-        output = await EnablePackage(pkg.PackageName);
-      }
-
-      toast.success(`Package ${action.slice(0, -3)}d`, {
-        description: output,
-        id: toastId,
-      });
-
-      loadPackages(filter);
-    } catch (error) {
-      console.error(`${action} error:`, error);
-      toast.error(`Failed to ${action.toLowerCase()} package`, {
-        description: String(error),
-        id: toastId,
-      });
-    } finally {
-      setIsTogglingPackageName("");
-    }
-  };
-
-  const handlePullApk = async (pkg: PackageInfo) => {
-    setIsPullingPackageName(pkg.PackageName);
-    const toastId = toast.loading("Preparing to pull APK...", {
-      description: pkg.PackageName,
-    });
-
-    try {
-      const output = await PullApk(pkg.PackageName);
-
-      if (output.includes("cancelled by user")) {
-        toast.info("Pull APK Cancelled", {
-          description: pkg.PackageName,
-          id: toastId,
-        });
-      } else {
-        toast.success("APK Pull Successful", {
-          description: output,
-          id: toastId,
-        });
-      }
-    } catch (error) {
-      console.error("Pull APK error:", error);
-      toast.error("Failed to pull APK", {
-        description: String(error),
-        id: toastId,
-      });
-    } finally {
-      setIsPullingPackageName("");
-    }
-  };
-
-  const handleSelectPackage = (packageName: string, checked: boolean) => {
+  const handleSelectPackage = useCallback((packageName: string, checked: boolean) => {
     if (checked) {
       setSelectedPackages((prev) => (prev.includes(packageName) ? prev : [...prev, packageName]));
     } else {
       setSelectedPackages((prev) => prev.filter((name) => name !== packageName));
     }
-  };
+  }, []);
 
-  const handleSelectAllPackages = (checked: boolean, targetList: PackageInfo[] = packageList) => {
-    const targetNames = targetList.map((pkg) => pkg.PackageName);
-    const targetSet = new Set(targetNames);
+  const handleSelectAllPackages = useCallback(
+    (checked: boolean, targetList: PackageInfo[] = packageList) => {
+      const targetNames = targetList.map((pkg) => pkg.PackageName);
+      const targetSet = new Set(targetNames);
 
-    if (targetNames.length === 0) {
-      return;
-    }
+      if (targetNames.length === 0) {
+        return;
+      }
 
-    if (checked) {
-      setSelectedPackages((prev) => {
-        const merged = new Set(prev);
-        targetSet.forEach((name) => merged.add(name));
-        return Array.from(merged);
-      });
-    } else {
-      setSelectedPackages((prev) => prev.filter((name) => !targetSet.has(name)));
-    }
-  };
+      if (checked) {
+        setSelectedPackages((prev) => {
+          const merged = new Set(prev);
+          targetSet.forEach((name) => merged.add(name));
+          return Array.from(merged);
+        });
+      } else {
+        setSelectedPackages((prev) => prev.filter((name) => !targetSet.has(name)));
+      }
+    },
+    [packageList]
+  );
 
-  const handleMultiUninstall = async () => {
-    if (selectedPackages.length === 0) {
-      toast.error("No packages selected to uninstall.");
-      return;
-    }
-
-    setIsBatchUninstalling(true);
-    const toastId = toast.loading(`Uninstalling ${selectedPackages.length} packages...`);
-
-    try {
-      const output = await UninstallMultiplePackages(selectedPackages);
-      toast.success("Batch Uninstall Complete", {
-        description: output,
-        id: toastId,
-        duration: 8000,
-      });
-      loadPackages(filter);
+  const handleMultiUninstall = useCallback(() => {
+    performMultiUninstall(selectedPackages, () => {
       setSelectedPackages([]);
-    } catch (error) {
-      console.error("Batch uninstall error:", error);
-      toast.error("Batch Uninstall Failed", {
-        description: String(error),
-        id: toastId,
-      });
-    } finally {
-      setIsBatchUninstalling(false);
       setIsBatchUninstallOpen(false);
-    }
-  };
+    });
+  }, [performMultiUninstall, selectedPackages]);
 
-  const handleMultiDisable = async () => {
-    if (selectedPackages.length === 0) return;
-    setIsBatchDisabling(true);
-    const toastId = toast.loading(`Disabling ${selectedPackages.length} packages...`);
-    try {
-      const output = await DisableMultiplePackages(selectedPackages);
-      toast.success("Batch Disable Complete", {
-        description: output,
-        id: toastId,
-        duration: 8000,
-      });
-      loadPackages(filter);
+  const handleMultiDisable = useCallback(() => {
+    performMultiDisable(selectedPackages, () => {
       setSelectedPackages([]);
-    } catch (error) {
-      toast.error("Batch Disable Failed", {
-        description: String(error),
-        id: toastId,
-      });
-    } finally {
-      setIsBatchDisabling(false);
       setIsBatchDisablingOpen(false);
-    }
-  };
+    });
+  }, [performMultiDisable, selectedPackages]);
 
-  const handleMultiEnable = async () => {
-    if (selectedPackages.length === 0) return;
-    setIsBatchEnabling(true);
-    const toastId = toast.loading(`Enabling ${selectedPackages.length} packages...`);
-    try {
-      const output = await EnableMultiplePackages(selectedPackages);
-      toast.success("Batch Enable Complete", {
-        description: output,
-        id: toastId,
-        duration: 8000,
-      });
-      loadPackages(filter);
+  const handleMultiEnable = useCallback(() => {
+    performMultiEnable(selectedPackages, () => {
       setSelectedPackages([]);
-    } catch (error) {
-      toast.error("Batch Enable Failed", {
-        description: String(error),
-        id: toastId,
-      });
-    } finally {
-      setIsBatchEnabling(false);
       setIsBatchEnablingOpen(false);
-    }
-  };
+    });
+  }, [performMultiEnable, selectedPackages]);
 
-  const visiblePackages = useMemo(() => {
-    const lowerSearch = searchTerm.trim().toLowerCase();
-    return packageList
-      .filter((pkg) => {
-        if (!lowerSearch) return true;
-        return pkg.PackageName.toLowerCase().includes(lowerSearch);
-      })
-      .filter((pkg) => {
-        if (statusFilter === "enabled") return pkg.IsEnabled;
-        if (statusFilter === "disabled") return !pkg.IsEnabled;
-        return true;
-      })
-      .sort((a, b) => {
-        return sortOrder === "asc" ? a.PackageName.localeCompare(b.PackageName) : b.PackageName.localeCompare(a.PackageName);
-      });
-  }, [packageList, searchTerm, statusFilter, sortOrder]);
+  const handleClearSelection = useCallback(() => setSelectedPackages([]), []);
 
-  const allVisibleSelected = visiblePackages.length > 0 && visiblePackages.every((pkg) => selectedPackages.includes(pkg.PackageName));
+  const handleResetFiltersAndSelection = useCallback(() => {
+    handleResetFilters();
+    setSelectedPackages([]);
+  }, [handleResetFilters]);
 
-  const { totalPackages, enabledPackages, disabledPackages } = useMemo(() => {
-    const total = packageList.length;
-    const enabledCount = packageList.filter((pkg) => pkg.IsEnabled).length;
-    return {
-      totalPackages: total,
-      enabledPackages: enabledCount,
-      disabledPackages: total - enabledCount,
-    };
-  }, [packageList]);
+  const allVisibleSelected = useMemo(() => {
+    if (visiblePackages.length === 0) return false;
+    return visiblePackages.every((pkg) => selectedPackages.includes(pkg.PackageName));
+  }, [visiblePackages, selectedPackages]);
 
   const selectedCount = selectedPackages.length;
 
-  const filterOptions: { label: string; value: FilterType }[] = [
-    { label: "User apps", value: "user" },
-    { label: "System apps", value: "system" },
-    { label: "All apps", value: "all" },
-  ];
+  const filterOptions: { label: string; value: FilterType }[] = useMemo(
+    () => [
+      { label: "User apps", value: "user" },
+      { label: "System apps", value: "system" },
+      { label: "All apps", value: "all" },
+    ],
+    []
+  );
 
-  const statusOptions: { label: string; value: StatusFilter }[] = [
-    { label: "Any status", value: "all" },
-    { label: "Enabled only", value: "enabled" },
-    { label: "Disabled only", value: "disabled" },
-  ];
+  const statusOptions: { label: string; value: StatusFilter }[] = useMemo(
+    () => [
+      { label: "Any status", value: "all" },
+      { label: "Enabled only", value: "enabled" },
+      { label: "Disabled only", value: "disabled" },
+    ],
+    []
+  );
 
-  const sortOptions: { label: string; value: "asc" | "desc" }[] = [
-    { label: "Name (A-Z)", value: "asc" },
-    { label: "Name (Z-A)", value: "desc" },
-  ];
+  const sortOptions: { label: string; value: "asc" | "desc" }[] = useMemo(
+    () => [
+      { label: "Name (A-Z)", value: "asc" },
+      { label: "Name (Z-A)", value: "desc" },
+    ],
+    []
+  );
 
-  const filterLabel = filterOptions.find((option) => option.value === filter)?.label ?? "Apps";
-  const statusLabel = statusOptions.find((option) => option.value === statusFilter)?.label ?? "Any status";
-  const sortLabel = sortOptions.find((option) => option.value === sortOrder)?.label ?? "Name (A-Z)";
+  const filterLabel = useMemo(() => filterOptions.find((option) => option.value === filter)?.label ?? "Apps", [filter, filterOptions]);
+  const statusLabel = useMemo(() => statusOptions.find((option) => option.value === statusFilter)?.label ?? "Any status", [statusFilter, statusOptions]);
+  const sortLabel = useMemo(() => sortOptions.find((option) => option.value === sortOrder)?.label ?? "Name (A-Z)", [sortOrder, sortOptions]);
 
-  const quickControlSelects: QuickControlSelect[] = [
-    {
-      label: "App source",
-      value: filterLabel,
-      options: filterOptions,
-      onSelect: (value: string) => setFilter(value as FilterType),
-      activeValue: filter,
-    },
-    {
-      label: "Status",
-      value: statusLabel,
-      options: statusOptions,
-      onSelect: (value: string) => setStatusFilter(value as StatusFilter),
-      activeValue: statusFilter,
-    },
-    {
-      label: "Sort order",
-      value: sortLabel,
-      options: sortOptions,
-      onSelect: (value: string) => setSortOrder(value as "asc" | "desc"),
-      activeValue: sortOrder,
-    },
-  ];
-
-  const handleClearSelection = () => setSelectedPackages([]);
-  const handleResetFilters = () => {
-    setFilter("user");
-    setStatusFilter("all");
-    setSortOrder("asc");
-    setSearchTerm("");
-    setSelectedPackages([]);
-  };
+  const quickControlSelects: QuickControlSelect[] = useMemo(
+    () => [
+      {
+        label: "App source",
+        value: filterLabel,
+        options: filterOptions,
+        onSelect: (value: string) => setFilter(value as FilterType),
+        activeValue: filter,
+      },
+      {
+        label: "Status",
+        value: statusLabel,
+        options: statusOptions,
+        onSelect: (value: string) => setStatusFilter(value as StatusFilter),
+        activeValue: statusFilter,
+      },
+      {
+        label: "Sort order",
+        value: sortLabel,
+        options: sortOptions,
+        onSelect: (value: string) => setSortOrder(value as "asc" | "desc"),
+        activeValue: sortOrder,
+      },
+    ],
+    [filterLabel, statusLabel, sortLabel, filterOptions, statusOptions, sortOptions, filter, statusFilter, sortOrder, setFilter, setStatusFilter, setSortOrder]
+  );
 
   const isBusy = isLoadingList || isBatchUninstalling || isBatchDisabling || isBatchEnabling;
 
@@ -438,7 +259,7 @@ export function useAppManager({ activeView }: UseAppManagerOptions) {
     sortLabel,
     quickControlSelects,
     handleClearSelection,
-    handleResetFilters,
+    handleResetFilters: handleResetFiltersAndSelection,
     isBusy,
   };
 }
