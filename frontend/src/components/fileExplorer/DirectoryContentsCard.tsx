@@ -77,8 +77,6 @@ export function DirectoryContentsCard({ visibleFiles, fileList, isLoading, allVi
                     return (
                       <div
                         key={file.Name}
-                        data-index={virtualRow.index}
-                        ref={virtualizer.measureElement}
                         onClick={() => onRowClick(file)}
                         onDoubleClick={() => onRowDoubleClick(file)}
                         className={`absolute top-0 left-0 w-full flex items-center border-b cursor-pointer hover:bg-muted/40 ${isSelected ? "bg-muted/20" : ""}`}

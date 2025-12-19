@@ -118,8 +118,6 @@ export function InstalledPackagesCard({
                     return (
                       <div
                         key={pkg.PackageName}
-                        data-index={virtualRow.index}
-                        ref={virtualizer.measureElement}
                         className={`absolute top-0 left-0 w-full flex items-center border-b hover:bg-muted/40 ${isSelected ? "bg-muted/20" : ""} ${!pkg.IsEnabled ? "opacity-60" : ""}`}
                         style={{
                           height: `${ROW_HEIGHT}px`,
