@@ -70,16 +70,18 @@ export namespace backend {
 	        this.Time = source["Time"];
 	    }
 	}
-	export class InstalledPackage {
-	    Name: string;
+	export class PackageInfo {
+	    PackageName: string;
+	    IsEnabled: boolean;
 	
 	    static createFrom(source: any = {}) {
-	        return new InstalledPackage(source);
+	        return new PackageInfo(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.Name = source["Name"];
+	        this.PackageName = source["PackageName"];
+	        this.IsEnabled = source["IsEnabled"];
 	    }
 	}
 

@@ -3,6 +3,15 @@ package backend
 import (
 	"context"
 	"fmt"
+	"sync"
+)
+
+type DeviceMode string
+
+const (
+	DeviceModeUnknown  DeviceMode = "unknown"
+	DeviceModeADB      DeviceMode = "adb"
+	DeviceModeFastboot DeviceMode = "fastboot"
 )
 
 type Device struct {
@@ -31,27 +40,43 @@ type FileEntry struct {
 	Date        string
 	Time        string
 }
-type InstalledPackage struct {
-	Name string
+
+type PackageInfo struct {
+	PackageName string
+	IsEnabled   bool
 }
 
-// App struct
 type App struct {
-	ctx context.Context
+	ctx         context.Context
+	binaryCache map[string]string
+	cacheMutex  sync.RWMutex
+	
+	currentCancel context.CancelFunc
+	opMutex       sync.Mutex
 }
 
-// NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	return &App{
+		binaryCache: make(map[string]string),
+	}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
 func (a *App) Startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
+}
+
+func (a *App) CancelOperation() string {
+	a.opMutex.Lock()
+	defer a.opMutex.Unlock()
+
+	if a.currentCancel != nil {
+		a.currentCancel()
+		a.currentCancel = nil
+		return "Operation cancelled."
+	}
+	return "No active operation to cancel."
 }

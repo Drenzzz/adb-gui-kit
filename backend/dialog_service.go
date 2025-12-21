@@ -1,8 +1,10 @@
 package backend
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/ncruces/zenity"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -69,6 +71,29 @@ func (a *App) SelectZipFile() (string, error) {
 	return selectedPath, nil
 }
 
+// SelectFilesToPush allows picking multiple files for import.
+func (a *App) SelectFilesToPush() ([]string, error) {
+	paths, err := zenity.SelectFileMultiple(
+		zenity.Title("Select Files to Import"),
+	)
+	if errors.Is(err, zenity.ErrCanceled) {
+		return nil, nil
+	}
+	return paths, err
+}
+
+// SelectFoldersToPush allows picking multiple directories for import.
+func (a *App) SelectFoldersToPush() ([]string, error) {
+	paths, err := zenity.SelectFileMultiple(
+		zenity.Directory(),
+		zenity.Title("Select Folders to Import"),
+	)
+	if errors.Is(err, zenity.ErrCanceled) {
+		return nil, nil
+	}
+	return paths, err
+}
+
 func (a *App) SelectFileToPush() (string, error) {
 	selectedPath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select File to Import",
@@ -108,4 +133,23 @@ func (a *App) SelectDirectoryToPush() (string, error) {
 		return "", err
 	}
 	return selectedPath, nil
+}
+
+func (a *App) SelectSaveFile(defaultFilename string) (string, error) {
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultFilename,
+		Title:           "Save File As...",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "All Files (*.*)",
+				Pattern:     "*.*",
+			},
+		},
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	return filePath, nil
 }
