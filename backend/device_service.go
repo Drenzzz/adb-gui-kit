@@ -251,9 +251,7 @@ func (a *App) GetDeviceMode() (string, error) {
 }
 
 func (a *App) Reboot(mode string) error {
-	if err := ValidateRebootMode(mode); err != nil {
-		return fmt.Errorf("invalid reboot mode: %w", err)
-	}
+
 	
 	connectionMode, detectionErr := a.detectDeviceMode()
 	if detectionErr != nil {

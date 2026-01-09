@@ -34,9 +34,7 @@ func (a *App) RunAdbHostCommand(args string) (string, error) {
 }
 
 func (a *App) SideloadPackage(filePath string) (string, error) {
-	if err := ValidateFilePath(filePath); err != nil {
-		return "", fmt.Errorf("invalid file path: %w", err)
-	}
+
 
 	output, err := a.runCommand("adb", "sideload", filePath)
 	if err != nil {
