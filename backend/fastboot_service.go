@@ -13,11 +13,8 @@ func (a *App) WipeData() error {
 }
 
 func (a *App) FlashPartition(partition string, filePath string) error {
-	if err := ValidatePartitionName(partition); err != nil {
-		return fmt.Errorf("invalid partition name: %w", err)
-	}
-	if err := ValidateFilePath(filePath); err != nil {
-		return fmt.Errorf("invalid file path: %w", err)
+	if partition == "" || filePath == "" {
+		return fmt.Errorf("partition and file path cannot be empty")
 	}
 
 	output, err := a.runCommand("fastboot", "flash", partition, filePath)
@@ -26,7 +23,6 @@ func (a *App) FlashPartition(partition string, filePath string) error {
 	}
 	return nil
 }
-
 
 func (a *App) GetFastbootDevices() ([]Device, error) {
 	output, err := a.runCommand("fastboot", "devices")

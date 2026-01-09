@@ -9,9 +9,7 @@ import (
 )
 
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
-	if err := ValidateRemotePath(path); err != nil {
-		return nil, fmt.Errorf("invalid path: %w", err)
-	}
+
 	
 	// List files uses default timeout (60s) which is sufficient
 	output, err := a.runCommand("adb", "shell", "ls", "-lA", path)
@@ -102,12 +100,7 @@ func (a *App) ListFiles(path string) ([]FileEntry, error) {
 }
 
 func (a *App) PushFile(localPath string, remotePath string) (string, error) {
-	if err := ValidateFilePath(localPath); err != nil {
-		return "", fmt.Errorf("invalid local path: %w", err)
-	}
-	if err := ValidateRemotePath(remotePath); err != nil {
-		return "", fmt.Errorf("invalid remote path: %w", err)
-	}
+
 	
 	a.opMutex.Lock()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
@@ -134,12 +127,7 @@ func (a *App) PushFile(localPath string, remotePath string) (string, error) {
 }
 
 func (a *App) PullFile(remotePath string, localPath string) (string, error) {
-	if err := ValidateRemotePath(remotePath); err != nil {
-		return "", fmt.Errorf("invalid remote path: %w", err)
-	}
-	if err := ValidateFilePath(localPath); err != nil {
-		return "", fmt.Errorf("invalid local path: %w", err)
-	}
+
 	
 	a.opMutex.Lock()
 	// No timeout for file transfers, only user cancellation
@@ -167,12 +155,7 @@ func (a *App) PullFile(remotePath string, localPath string) (string, error) {
 }
 
 func (a *App) CreateFolder(fullPath string) (string, error) {
-	if err := ValidateRemotePath(fullPath); err != nil {
-		return "", fmt.Errorf("invalid path: %w", err)
-	}
-
-	sanitizedPath := SanitizeShellArg(fullPath)
-	command := fmt.Sprintf("mkdir -p '%s'", sanitizedPath)
+	command := fmt.Sprintf("mkdir -p '%s'", fullPath)
 
 	output, err := a.runShellCommand(command)
 	if err != nil {
@@ -183,12 +166,7 @@ func (a *App) CreateFolder(fullPath string) (string, error) {
 }
 
 func (a *App) DeleteFile(fullPath string) (string, error) {
-	if err := ValidateRemotePath(fullPath); err != nil {
-		return "", fmt.Errorf("invalid path: %w", err)
-	}
-
-	sanitizedPath := SanitizeShellArg(fullPath)
-	command := fmt.Sprintf("rm -rf '%s'", sanitizedPath)
+	command := fmt.Sprintf("rm -rf '%s'", fullPath)
 
 	output, err := a.runShellCommand(command)
 	if err != nil {
@@ -199,16 +177,7 @@ func (a *App) DeleteFile(fullPath string) (string, error) {
 }
 
 func (a *App) RenameFile(oldPath string, newPath string) (string, error) {
-	if err := ValidateRemotePath(oldPath); err != nil {
-		return "", fmt.Errorf("invalid old path: %w", err)
-	}
-	if err := ValidateRemotePath(newPath); err != nil {
-		return "", fmt.Errorf("invalid new path: %w", err)
-	}
-
-	sanitizedOld := SanitizeShellArg(oldPath)
-	sanitizedNew := SanitizeShellArg(newPath)
-	command := fmt.Sprintf("mv '%s' '%s'", sanitizedOld, sanitizedNew)
+	command := fmt.Sprintf("mv '%s' '%s'", oldPath, newPath)
 
 	output, err := a.runShellCommand(command)
 	if err != nil {

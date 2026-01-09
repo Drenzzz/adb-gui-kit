@@ -9,9 +9,7 @@ func (a *App) EnableWirelessAdb(port string) (string, error) {
 	if port == "" {
 		port = "5555"
 	}
-	if err := ValidatePort(port); err != nil {
-		return "", fmt.Errorf("invalid port: %w", err)
-	}
+
 	
 	output, err := a.runCommand("adb", "tcpip", port)
 	if err != nil {
@@ -22,15 +20,11 @@ func (a *App) EnableWirelessAdb(port string) (string, error) {
 }
 
 func (a *App) ConnectWirelessAdb(ipAddress string, port string) (string, error) {
-	if err := ValidateIPAddress(ipAddress); err != nil {
-		return "", fmt.Errorf("invalid IP address: %w", err)
-	}
+
 	if port == "" {
 		port = "5555"
 	}
-	if err := ValidatePort(port); err != nil {
-		return "", fmt.Errorf("invalid port: %w", err)
-	}
+
 	
 	address := fmt.Sprintf("%s:%s", ipAddress, port)
 	
@@ -50,15 +44,11 @@ func (a *App) ConnectWirelessAdb(ipAddress string, port string) (string, error) 
 }
 
 func (a *App) DisconnectWirelessAdb(ipAddress string, port string) (string, error) {
-	if err := ValidateIPAddress(ipAddress); err != nil {
-		return "", fmt.Errorf("invalid IP address: %w", err)
-	}
+
 	if port == "" {
 		port = "5555"
 	}
-	if err := ValidatePort(port); err != nil {
-		return "", fmt.Errorf("invalid port: %w", err)
-	}
+
 	
 	address := fmt.Sprintf("%s:%s", ipAddress, port)
 	

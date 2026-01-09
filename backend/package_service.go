@@ -9,9 +9,7 @@ import (
 )
 
 func (a *App) InstallPackage(filePath string) (string, error) {
-	if err := ValidateFilePath(filePath); err != nil {
-		return "", fmt.Errorf("invalid file path: %w", err)
-	}
+
 	
 	a.opMutex.Lock()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
@@ -39,9 +37,7 @@ func (a *App) InstallPackage(filePath string) (string, error) {
 }
 
 func (a *App) UninstallPackage(packageName string) (string, error) {
-	if err := ValidatePackageName(packageName); err != nil {
-		return "", fmt.Errorf("invalid package name: %w", err)
-	}
+
 	
 	output, err := a.runCommand("adb", "shell", "pm", "uninstall", packageName)
 	if err != nil {
@@ -164,9 +160,7 @@ func (a *App) ListPackages(filterType string) ([]PackageInfo, error) {
 
 
 func (a *App) ClearData(packageName string) (string, error) {
-	if err := ValidatePackageName(packageName); err != nil {
-		return "", fmt.Errorf("invalid package name: %w", err)
-	}
+
 
 	output, err := a.runCommand("adb", "shell", "pm", "clear", packageName)
 
@@ -182,9 +176,7 @@ func (a *App) ClearData(packageName string) (string, error) {
 }
 
 func (a *App) DisablePackage(packageName string) (string, error) {
-	if err := ValidatePackageName(packageName); err != nil {
-		return "", fmt.Errorf("invalid package name: %w", err)
-	}
+
 
 	output, err := a.runCommand("adb", "shell", "pm", "disable-user", "--user", "0", packageName)
 	if err != nil {
@@ -203,9 +195,7 @@ func (a *App) DisablePackage(packageName string) (string, error) {
 }
 
 func (a *App) EnablePackage(packageName string) (string, error) {
-	if err := ValidatePackageName(packageName); err != nil {
-		return "", fmt.Errorf("invalid package name: %w", err)
-	}
+
 
 	output, err := a.runCommand("adb", "shell", "pm", "enable", "--user", "0", packageName)
 	if err != nil {
@@ -220,9 +210,7 @@ func (a *App) EnablePackage(packageName string) (string, error) {
 }
 
 func (a *App) PullApk(packageName string) (string, error) {
-	if err := ValidatePackageName(packageName); err != nil {
-		return "", fmt.Errorf("invalid package name: %w", err)
-	}
+
 
 	pathOutput, err := a.runCommand("adb", "shell", "pm", "path", packageName)
 	if err != nil {
