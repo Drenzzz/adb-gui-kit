@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "type": "module",
-  "version": "1.1",
+  "version": "1.2",
   "scripts": {
     "dev": "astro dev --port 4333",
     "build": "astro build",

@@ -14,8 +14,8 @@
   "info": {
     "companyName": "Drenzzz",
     "productName": "ADBKit",
-    "productVersion": "1.1.0",
-    "fileVersion": "1.1.0",
+    "productVersion": "1.2.0",
+    "fileVersion": "1.2.0",
     "copyright": "Copyright (c) 2025 Drenzzz",
     "comments": ""
   },
@@ -24,7 +24,7 @@
       "name": "ADBKit",
       "description": "A simple, modern GUI for ADB and Fastboot.",
       "packagename": "ADBKit",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "maintainer": "Drenzzz <realdrenzzz@gmail.com>",
       "depends": [
         "libgtk-3-0",

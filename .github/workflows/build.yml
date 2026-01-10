@@ -152,7 +152,7 @@ jobs:
           name: "adbkit"
           arch: "amd64"
           platform: "linux"
-          version: "1.1.0"
+          version: "1.2.0"
           section: "utils"
           priority: "optional"
           maintainer: "Drenzzz <realdrenzzz@gmail.com>"
