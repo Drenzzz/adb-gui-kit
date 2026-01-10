@@ -91,3 +91,20 @@ Built with **Wails** (Go + React) for speed, lightweight resource usage, and nat
     ```bash
     wails build
     ```
+
+---
+
+## Troubleshooting
+
+- **Device Not Found?** Ensure USB Debugging is enabled on your phone and drivers are installed.
+- **Unauthorized?** Check your phone screen to accept the RSA fingerprint prompt.
+- **Linux Users:** If you can't access USB devices, ensure you have the correct `udev` rules set up.
+
+## Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests to improve ADBKit.
+Project Link: https://github.com/Drenzzz/adb-gui-kit
+
+## License
+
+This project is licensed under the MIT License.
